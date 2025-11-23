@@ -37,6 +37,8 @@ class SoapService {
   serviceOptions: SoapServiceOptions;
   startedCallbacks: (() => void)[];
   isStarted: boolean;
+  lastValidAuthAt: number;
+  recentAuthWindowMs: number;
 
   constructor(config: rposConfig, server: Server) {
     this.webserver = server;
@@ -52,6 +54,9 @@ class SoapService {
       wsdlPath: '',
       onReady: () => { }
     };
+
+    this.lastValidAuthAt = 0;
+    this.recentAuthWindowMs = 5 * 60 * 1000; // 5 minutes
 
   }
 
