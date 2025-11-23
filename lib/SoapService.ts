@@ -102,6 +102,40 @@ class SoapService {
     };
   }
 
+  extractUsernameToken(request: any): { token: any, debug: any } {
+    const first = (value: any) => Array.isArray(value) ? value[0] : value;
+    const firstDefined = (...values: any[]) => values.find((v) => v !== undefined && v !== null);
+
+    const header = firstDefined(first(request?.Header), first(request?.header));
+    const securityFromHeader = firstDefined(first(header?.Security), first(header?.security));
+
+    const token = first(
+      firstDefined(
+        first(securityFromHeader?.UsernameToken),
+        first(firstDefined(first(request?.Security), first(request?.security))?.UsernameToken),
+        first(header?.UsernameToken),
+        first(request?.UsernameToken),
+        first(request?.usernameToken)
+      )
+    );
+
+    const headerCandidates = {
+      Header: header,
+      Security: securityFromHeader,
+      rootSecurity: firstDefined(first(request?.Security), first(request?.security)),
+    };
+
+    const debug = {
+      requestKeys: request ? Object.keys(request) : undefined,
+      headerKeys: Object.entries(headerCandidates).reduce((acc: any, [key, value]) => {
+        if (value) acc[key] = Object.keys(value);
+        return acc;
+      }, {}),
+    };
+
+    return { token, debug };
+  }
+
   onStarted(callback: () => {}) {
     if (this.isStarted)
       callback();
