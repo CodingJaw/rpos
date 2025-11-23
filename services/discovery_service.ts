@@ -81,19 +81,25 @@ class DiscoveryService {
       var parseString = xml2js.parseString;
       var strip = xml2js['processors'].stripPrefix;
       parseString(filtered_msg, { tagNameProcessors: [strip] }, (err, result) => {
-        let probe_uuid = result['Envelope']['Header'][0]['MessageID'][0];
-        let probe_type = "";
-        try {
-          probe_type = result['Envelope']['Body'][0]['Probe'][0]['Types'][0];
-        } catch (err) {
-          probe_type = ""; // For a VMS that does not send Types
+        if (err || !result?.Envelope?.Body?.[0]) {
+          return;
         }
 
-        const probe_types = probe_type ? probe_type.split(/\s+/) : [];
+        const header = result.Envelope.Header?.[0];
+        const probe = result.Envelope.Body[0].Probe?.[0];
+        if (!probe) {
+          return;
+        }
+
+        const probe_uuid = header?.MessageID?.[0] || uuid.v1();
+        const probe_type = probe.Types?.[0] || ""; // For a VMS that does not send Types
+
+        const probe_types = probe_type ? probe_type.split(/\s+/).filter(Boolean) : [];
+        const normalized_types = probe_types.map(t => t.includes(":") ? t.split(":")[1] : t);
         const matchesProbe =
-          probe_type === "" ||
-          probe_types.indexOf("NetworkVideoTransmitter") > -1 ||
-          probe_types.indexOf("Device") > -1;
+          probe_types.length === 0 ||
+          normalized_types.indexOf("NetworkVideoTransmitter") > -1 ||
+          normalized_types.indexOf("Device") > -1;
 
         if (matchesProbe) {
 
