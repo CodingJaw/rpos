@@ -81,9 +81,11 @@ class SoapService {
       if (methodName === "GetSystemDateAndTime") return;
 
       if (this.config.Username) {
-        const { token, debug } = this.extractUsernameToken(request);
+        const token = request?.Header?.Security?.UsernameToken;
         if (!token) {
-          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, debug);
+          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, {
+            header: request?.Header,
+          });
           throw NOT_IMPLEMENTED;
         }
 
@@ -150,21 +152,12 @@ class SoapService {
   }
 
   validateUsernameToken(token: any): boolean {
-    const first = (value: any) => Array.isArray(value) ? value[0] : value;
-    const unwrapValue = (value: any) => {
-      const unwrapped = first(value);
-      if (unwrapped && typeof unwrapped === 'object' && '$value' in unwrapped) {
-        return unwrapValue((<any>unwrapped).$value);
-      }
-      return unwrapped ?? '';
-    };
-
-    const username = unwrapValue(token?.Username);
-    const passwordElement = first(token?.Password);
-    const password = unwrapValue(passwordElement);
-    const passwordType = unwrapValue(passwordElement?.attributes?.Type ?? passwordElement?.Type);
-    const nonce = unwrapValue(token?.Nonce);
-    const created = unwrapValue(token?.Created);
+    const username = token?.Username?.$value ?? token?.Username ?? '';
+    const passwordElement = token?.Password;
+    const password = passwordElement?.$value ?? passwordElement ?? '';
+    const passwordType = passwordElement?.attributes?.Type ?? passwordElement?.Type ?? '';
+    const nonce = token?.Nonce?.$value ?? token?.Nonce ?? '';
+    const created = token?.Created?.$value ?? token?.Created ?? '';
 
     const onvif_username = this.config.Username;
     const onvif_password = this.config.Password;
