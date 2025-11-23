@@ -66,7 +66,6 @@ class DiscoveryService {
       reuseAddr: true
     };
     var discover_socket = dgram.createSocket(opts);
-    var reply_socket    = dgram.createSocket('udp4');
 
     discover_socket.on('error', (err) => {
       throw err;
@@ -124,8 +123,8 @@ class DiscoveryService {
 
           let reply_bytes = new Buffer(reply);
 
-          // Mac needed replies from a different UDP socket (ie not the bounded socket)
-          return reply_socket.send(reply_bytes, 0, reply_bytes.length, rinfo.port, rinfo.address);
+          // Use the bound discovery socket so replies come from port 3702
+          return discover_socket.send(reply_bytes, 0, reply_bytes.length, rinfo.port, rinfo.address);
         }
       });
     });
