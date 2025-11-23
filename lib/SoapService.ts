@@ -101,20 +101,26 @@ class SoapService {
   }
 
   extractUsernameToken(request: any): { token: any, debug: any } {
-    const token = request?.Header?.Security?.UsernameToken
-      ?? request?.header?.Security?.UsernameToken
-      ?? request?.Security?.UsernameToken
-      ?? request?.security?.UsernameToken
-      ?? request?.Header?.UsernameToken
-      ?? request?.header?.UsernameToken
-      ?? request?.UsernameToken
-      ?? request?.usernameToken;
+    const first = (value: any) => Array.isArray(value) ? value[0] : value;
+    const firstDefined = (...values: any[]) => values.find((v) => v !== undefined && v !== null);
+
+    const header = firstDefined(first(request?.Header), first(request?.header));
+    const securityFromHeader = firstDefined(first(header?.Security), first(header?.security));
+
+    const token = first(
+      firstDefined(
+        first(securityFromHeader?.UsernameToken),
+        first(firstDefined(first(request?.Security), first(request?.security))?.UsernameToken),
+        first(header?.UsernameToken),
+        first(request?.UsernameToken),
+        first(request?.usernameToken)
+      )
+    );
 
     const headerCandidates = {
-      Header: request?.Header,
-      header: request?.header,
-      Security: request?.Security,
-      security: request?.security,
+      Header: header,
+      Security: securityFromHeader,
+      rootSecurity: firstDefined(first(request?.Security), first(request?.security)),
     };
 
     const debug = {
@@ -144,12 +150,21 @@ class SoapService {
   }
 
   validateUsernameToken(token: any): boolean {
-    const username = token?.Username?.$value ?? token?.Username ?? '';
-    const passwordElement = token?.Password;
-    const password = passwordElement?.$value ?? passwordElement ?? '';
-    const passwordType = passwordElement?.attributes?.Type ?? passwordElement?.Type ?? '';
-    const nonce = token?.Nonce?.$value ?? token?.Nonce ?? '';
-    const created = token?.Created?.$value ?? token?.Created ?? '';
+    const first = (value: any) => Array.isArray(value) ? value[0] : value;
+    const unwrapValue = (value: any) => {
+      const unwrapped = first(value);
+      if (unwrapped && typeof unwrapped === 'object' && '$value' in unwrapped) {
+        return unwrapValue((<any>unwrapped).$value);
+      }
+      return unwrapped ?? '';
+    };
+
+    const username = unwrapValue(token?.Username);
+    const passwordElement = first(token?.Password);
+    const password = unwrapValue(passwordElement);
+    const passwordType = unwrapValue(passwordElement?.attributes?.Type ?? passwordElement?.Type);
+    const nonce = unwrapValue(token?.Nonce);
+    const created = unwrapValue(token?.Created);
 
     const onvif_username = this.config.Username;
     const onvif_password = this.config.Password;
