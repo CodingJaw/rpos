@@ -126,12 +126,36 @@ class SoapService {
     const onvif_username = this.config.Username;
     const onvif_password = this.config.Password;
 
-    if (!username || !password || !onvif_username) return false;
+    utils.log.info('[AuthDebug] Parsed UsernameToken', {
+      username,
+      passwordType: passwordType || 'PasswordDigest',
+      nonce,
+      created,
+    });
+
+    if (!username || !password || !onvif_username) {
+      utils.log.info('[AuthDebug] Missing credential fields', {
+        hasUsername: !!username,
+        hasPassword: !!password,
+        hasConfiguredUsername: !!onvif_username,
+        hasNonce: !!nonce,
+        hasCreated: !!created,
+      });
+      return false;
+    }
 
     const isPasswordText = typeof passwordType === 'string' && passwordType.indexOf('PasswordText') !== -1;
 
     if (isPasswordText) {
-      return username === onvif_username && password === onvif_password;
+      const isMatch = username === onvif_username && password === onvif_password;
+      utils.log.info('[AuthDebug] PasswordText comparison', {
+        providedUsername: username,
+        expectedUsername: onvif_username,
+        providedPassword: password,
+        expectedPassword: onvif_password,
+        result: isMatch,
+      });
+      return isMatch;
     }
 
     const rawNonce = Buffer.from(nonce || '', 'base64');
@@ -145,7 +169,18 @@ class SoapService {
     pwHash.update(combined_data);
     const generated_password = pwHash.digest('base64');
 
-    return username === onvif_username && password === generated_password;
+    const isDigestMatch = username === onvif_username && password === generated_password;
+    utils.log.info('[AuthDebug] PasswordDigest comparison', {
+      providedUsername: username,
+      expectedUsername: onvif_username,
+      providedPasswordDigest: password,
+      generatedPasswordDigest: generated_password,
+      rawNonce: nonce,
+      created,
+      result: isDigestMatch,
+    });
+
+    return isDigestMatch;
   }
 }
 export = SoapService;
