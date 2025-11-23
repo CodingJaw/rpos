@@ -50,7 +50,33 @@ function runPasswordDigestTest() {
   assert.strictEqual(service.validateUsernameToken(token), true, 'PasswordDigest tokens should validate with digest');
 }
 
+function runHeaderExtractionTests() {
+  const extract = (request: any) => (<any>service).extractUsernameToken(request).token;
+
+  const nestedToken = { Username: 'admin' };
+  const securityOnlyToken = { Username: 'admin' };
+
+  assert.strictEqual(
+    extract({ Header: { Security: { UsernameToken: nestedToken } } }),
+    nestedToken,
+    'Should extract UsernameToken from Header.Security'
+  );
+
+  assert.strictEqual(
+    extract({ Security: { UsernameToken: securityOnlyToken } }),
+    securityOnlyToken,
+    'Should extract UsernameToken when Security is at the root'
+  );
+
+  assert.strictEqual(
+    extract({}),
+    undefined,
+    'Should return undefined when no token is present'
+  );
+}
+
 runPasswordTextTest();
 runPasswordDigestTest();
+runHeaderExtractionTests();
 
 console.log('SoapService token validation tests passed');

@@ -81,14 +81,9 @@ class SoapService {
       if (methodName === "GetSystemDateAndTime") return;
 
       if (this.config.Username) {
-        // Some clients populate soap headers on either `Header` or `header`; tolerate both.
-        const header = request?.Header ?? request?.header ?? request?.Security;
-        const token = header?.Security?.UsernameToken ?? header?.UsernameToken;
+        const { token, debug } = this.extractUsernameToken(request);
         if (!token) {
-          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, {
-            header,
-            headerKeys: header ? Object.keys(header) : undefined,
-          });
+          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, debug);
           throw NOT_IMPLEMENTED;
         }
 
@@ -103,6 +98,34 @@ class SoapService {
       if (this.config.logSoapCalls)
         utils.log.debug('%s - Calltype : %s, Data : %s', (<TypeConstructor>this.constructor).name, type, data);
     };
+  }
+
+  extractUsernameToken(request: any): { token: any, debug: any } {
+    const token = request?.Header?.Security?.UsernameToken
+      ?? request?.header?.Security?.UsernameToken
+      ?? request?.Security?.UsernameToken
+      ?? request?.security?.UsernameToken
+      ?? request?.Header?.UsernameToken
+      ?? request?.header?.UsernameToken
+      ?? request?.UsernameToken
+      ?? request?.usernameToken;
+
+    const headerCandidates = {
+      Header: request?.Header,
+      header: request?.header,
+      Security: request?.Security,
+      security: request?.security,
+    };
+
+    const debug = {
+      requestKeys: request ? Object.keys(request) : undefined,
+      headerKeys: Object.entries(headerCandidates).reduce((acc: any, [key, value]) => {
+        if (value) acc[key] = Object.keys(value);
+        return acc;
+      }, {}),
+    };
+
+    return { token, debug };
   }
 
   onStarted(callback: () => {}) {
