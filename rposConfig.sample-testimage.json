@@ -5,7 +5,12 @@
   "Username" : "admin",
   "Password" : "admin",
   "CameraType" : "testsrc",
-  "CameraDevice" : "",
+  "CameraDevice" : "./sample_image.jpg",
+  "TestSrc": {
+    "Preset": "720p",
+    "Framerate": 25,
+    "Pattern": "image"
+  },
   "RTSPAddress" : "", "//":"Normally left blank. Used to set RTSP Server Address",
   "RTSPPort" : 8554,
   "RTSPName" : "h264",

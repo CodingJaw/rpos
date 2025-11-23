@@ -221,6 +221,35 @@ class Camera {
     v4l2ctl.ApplyControls();
   }
 
+  private getTestSrcSettings() {
+    const presetMap: { [key: string]: Resolution } = {
+      "1080p": { Width: 1920, Height: 1080 },
+      "720p": { Width: 1280, Height: 720 },
+      "480p": { Width: 640, Height: 480 },
+    };
+
+    const testSrcConfig = this.config.TestSrc || <TestSrcConfig>{};
+    const presetKey = (typeof testSrcConfig.Preset === "string") ? testSrcConfig.Preset.toLowerCase() : undefined;
+    const presetResolution = presetKey && presetMap[presetKey];
+
+    const defaultResolution = this.settings.resolution;
+    const width = testSrcConfig.Width || (presetResolution ? presetResolution.Width : defaultResolution.Width);
+    const height = testSrcConfig.Height || (presetResolution ? presetResolution.Height : defaultResolution.Height);
+    const framerate = testSrcConfig.Framerate || this.settings.framerate;
+
+    const configuredPattern = (typeof testSrcConfig.Pattern === "string") ? testSrcConfig.Pattern.toLowerCase() : "ball";
+    const allowedPatterns = ["ball", "colorbars", "image", "file"];
+    const pattern = allowedPatterns.indexOf(configuredPattern) >= 0 ? configuredPattern : "ball";
+
+    return {
+      width,
+      height,
+      framerate,
+      pattern,
+      preset: testSrcConfig.Preset
+    };
+  }
+
   startRtsp() {
     if (this.rtspServer) {
       utils.log.warn("Cannot start rtspServer, already running");
@@ -228,12 +257,27 @@ class Camera {
     }
     utils.log.info("Starting rtsp server");
 
+    let rtspWidth = this.settings.resolution.Width;
+    let rtspHeight = this.settings.resolution.Height;
+    let gstArgs: string[] = [];
+
+    if (this.config.CameraType === 'testsrc') {
+      const testSrc = this.getTestSrcSettings();
+      rtspWidth = testSrc.width;
+      rtspHeight = testSrc.height;
+      gstArgs.push('-F', testSrc.framerate.toString());
+      gstArgs.push('-p', testSrc.pattern);
+      if (testSrc.preset) {
+        gstArgs.push('-S', testSrc.preset);
+      }
+    }
+
     if (this.config.MulticastEnabled) {
         this.rtspServer = utils.spawn("v4l2rtspserver", ["-P", this.config.RTSPPort.toString(), "-u" , this.config.RTSPName.toString(), "-m", this.config.RTSPMulticastName, "-M", this.config.MulticastAddress.toString() + ":" + this.config.MulticastPort.toString(), "-W",this.settings.resolution.Width.toString(), "-H", this.settings.resolution.Height.toString(), "/dev/video0"]);
     } else {
         if (this.config.RTSPServer == 1) this.rtspServer = utils.spawn("./bin/rtspServer", ["/dev/video0", "2088960", this.config.RTSPPort.toString(), "0", this.config.RTSPName.toString()]);
-        if (this.config.RTSPServer == 2) this.rtspServer = utils.spawn("v4l2rtspserver", ["-P",this.config.RTSPPort.toString(), "-u" , this.config.RTSPName.toString(),"-W",this.settings.resolution.Width.toString(),"-H",this.settings.resolution.Height.toString(),"/dev/video0"]);
-        if (this.config.RTSPServer == 3) this.rtspServer = utils.spawn("./python/gst-rtsp-launch.sh", ["-P",this.config.RTSPPort.toString(), "-u" , this.config.RTSPName.toString(),"-W",this.settings.resolution.Width.toString(),"-H",this.settings.resolution.Height.toString(), "-t", this.config.CameraType, "-d", (this.config.CameraDevice == "" ? "auto" : this.config.CameraDevice)]);
+        if (this.config.RTSPServer == 2) this.rtspServer = utils.spawn("v4l2rtspserver", ["-P",this.config.RTSPPort.toString(),"-u" , this.config.RTSPName.toString(),"-W",this.settings.resolution.Width.toString(),"-H",this.settings.resolution.Height.toString(),"/dev/video0"]);
+        if (this.config.RTSPServer == 3) this.rtspServer = utils.spawn("./python/gst-rtsp-launch.sh", ["-P",this.config.RTSPPort.toString(), "-u" , this.config.RTSPName.toString(),"-W",rtspWidth.toString(),"-H",rtspHeight.toString(), "-t", this.config.CameraType, "-d", (this.config.CameraDevice == "" ? "auto" : this.config.CameraDevice)].concat(gstArgs));
     }
 
     if (this.rtspServer) {
