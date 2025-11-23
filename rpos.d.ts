@@ -21,6 +21,7 @@ interface rposConfig {
   PTZSerialPortSettings: PTZSerialPortSettings;
   PTZOutputURL: string;
   PTZCameraAddress: number;
+  TestSrc?: TestSrcConfig;
   DeviceInformation: DeviceInformation;
   logLevel: number;
   logSoapCalls: Boolean;
@@ -80,6 +81,13 @@ interface UserControlsLookupSet<T> extends Array<UserControlsLookup<T>> {
 interface Resolution {
   Width: number;
   Height: number;
+}
+interface TestSrcConfig {
+  Preset?: "1080p" | "720p" | "480p";
+  Width?: number;
+  Height?: number;
+  Framerate?: number;
+  Pattern?: "ball" | "colorbars" | "image" | "file";
 }
 interface CameraSettingsParameter {
   gop: number; //keyframe every X sec.
