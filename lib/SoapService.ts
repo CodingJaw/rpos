@@ -116,6 +116,12 @@ class SoapService {
   }
 
   validateUsernameToken(token: any): boolean {
+    const maskValue = (value: string) => {
+      if (!value) return '';
+      if (value.length <= 4) return '****';
+      return `${value.slice(0, 2)}***${value.slice(-2)}`;
+    };
+
     const username = token?.Username?.$value ?? token?.Username ?? '';
     const passwordElement = token?.Password;
     const password = passwordElement?.$value ?? passwordElement ?? '';
@@ -151,8 +157,8 @@ class SoapService {
       utils.log.info('[AuthDebug] PasswordText comparison', {
         providedUsername: username,
         expectedUsername: onvif_username,
-        providedPassword: password,
-        expectedPassword: onvif_password,
+        providedPassword: maskValue(password),
+        expectedPassword: maskValue(onvif_password),
         result: isMatch,
       });
       return isMatch;
@@ -173,8 +179,8 @@ class SoapService {
     utils.log.info('[AuthDebug] PasswordDigest comparison', {
       providedUsername: username,
       expectedUsername: onvif_username,
-      providedPasswordDigest: password,
-      generatedPasswordDigest: generated_password,
+      providedPasswordDigest: maskValue(password),
+      generatedPasswordDigest: maskValue(generated_password),
       rawNonce: nonce,
       created,
       result: isDigestMatch,
