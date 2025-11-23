@@ -86,19 +86,15 @@ class SoapService {
       if (methodName === "GetSystemDateAndTime") return;
 
       if (this.config.Username) {
-        const { token, debug } = this.extractUsernameToken(request);
-        const tokenIsValid = token ? this.validateUsernameToken(token) : false;
-        const hasRecentAuth = this.hasRecentAuth();
+        const token = request?.Header?.Security?.UsernameToken;
         if (!token) {
-          if (hasRecentAuth) {
-            utils.log.info('[AuthDebug] Reusing recent valid UsernameToken for ' + methodName, debug);
-            return;
-          }
-          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, debug);
+          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, {
+            header: request?.Header,
+          });
           throw NOT_IMPLEMENTED;
         }
 
-        if (!tokenIsValid) {
+        if (!this.validateUsernameToken(token)) {
           utils.log.info('Invalid username/password with ' + methodName);
           throw NOT_IMPLEMENTED;
         }
@@ -115,21 +111,13 @@ class SoapService {
     const first = (value: any) => Array.isArray(value) ? value[0] : value;
     const firstDefined = (...values: any[]) => values.find((v) => v !== undefined && v !== null);
 
-    const envelope = firstDefined(first(request?.Envelope), first(request?.envelope));
-    const header = firstDefined(
-      first(envelope?.Header),
-      first(envelope?.header),
-      first(request?.Header),
-      first(request?.header)
-    );
+    const header = firstDefined(first(request?.Header), first(request?.header));
     const securityFromHeader = firstDefined(first(header?.Security), first(header?.security));
 
     const token = first(
       firstDefined(
         first(securityFromHeader?.UsernameToken),
         first(firstDefined(first(request?.Security), first(request?.security))?.UsernameToken),
-        first(envelope?.Security?.UsernameToken),
-        first(envelope?.security?.UsernameToken),
         first(header?.UsernameToken),
         first(request?.UsernameToken),
         first(request?.usernameToken)
@@ -153,10 +141,6 @@ class SoapService {
     return { token, debug };
   }
 
-  hasRecentAuth(): boolean {
-    return !!this.lastValidAuthAt && (Date.now() - this.lastValidAuthAt) < this.recentAuthWindowMs;
-  }
-
   onStarted(callback: () => {}) {
     if (this.isStarted)
       callback();
@@ -173,21 +157,12 @@ class SoapService {
   }
 
   validateUsernameToken(token: any): boolean {
-    const first = (value: any) => Array.isArray(value) ? value[0] : value;
-    const unwrapValue = (value: any) => {
-      const unwrapped = first(value);
-      if (unwrapped && typeof unwrapped === 'object' && '$value' in unwrapped) {
-        return unwrapValue((<any>unwrapped).$value);
-      }
-      return unwrapped ?? '';
-    };
-
-    const username = unwrapValue(token?.Username);
-    const passwordElement = first(token?.Password);
-    const password = unwrapValue(passwordElement);
-    const passwordType = unwrapValue(passwordElement?.attributes?.Type ?? passwordElement?.Type);
-    const nonce = unwrapValue(token?.Nonce);
-    const created = unwrapValue(token?.Created);
+    const username = token?.Username?.$value ?? token?.Username ?? '';
+    const passwordElement = token?.Password;
+    const password = passwordElement?.$value ?? passwordElement ?? '';
+    const passwordType = passwordElement?.attributes?.Type ?? passwordElement?.Type ?? '';
+    const nonce = token?.Nonce?.$value ?? token?.Nonce ?? '';
+    const created = token?.Created?.$value ?? token?.Created ?? '';
 
     const onvif_username = this.config.Username;
     const onvif_password = this.config.Password;
@@ -221,7 +196,6 @@ class SoapService {
         expectedPassword: onvif_password,
         result: isMatch,
       });
-      if (isMatch) this.lastValidAuthAt = Date.now();
       return isMatch;
     }
 
@@ -247,7 +221,6 @@ class SoapService {
       result: isDigestMatch,
     });
 
-    if (isDigestMatch) this.lastValidAuthAt = Date.now();
     return isDigestMatch;
   }
 }
