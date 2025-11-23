@@ -89,7 +89,13 @@ class DiscoveryService {
           probe_type = ""; // For a VMS that does not send Types
         }
 
-        if (probe_type === "" || probe_type.indexOf("NetworkVideoTransmitter") > -1) {
+        const probe_types = probe_type ? probe_type.split(/\s+/) : [];
+        const matchesProbe =
+          probe_type === "" ||
+          probe_types.indexOf("NetworkVideoTransmitter") > -1 ||
+          probe_types.indexOf("Device") > -1;
+
+        if (matchesProbe) {
 
           let reply = `<?xml version="1.0" encoding="UTF-8"?>
           <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery" xmlns:dn="http://www.onvif.org/ver10/network/wsdl">
