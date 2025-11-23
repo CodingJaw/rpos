@@ -7,6 +7,7 @@ const config: any = {
 };
 
 const service = new SoapService(config, <any>{});
+const crypto = require('crypto');
 
 function runPasswordTextTest() {
   const token = {
@@ -39,7 +40,6 @@ function runPasswordTextArrayWrappedTest() {
 function runPasswordDigestTest() {
   const nonce = Buffer.from('nonce-value').toString('base64');
   const created = '2024-01-01T00:00:00Z';
-  const crypto = require('crypto');
   const pwHash = crypto.createHash('sha1');
   const combined = Buffer.concat([
     Buffer.from(nonce, 'base64'),
@@ -62,6 +62,40 @@ function runPasswordDigestTest() {
   };
 
   assert.strictEqual(service.validateUsernameToken(token), true, 'PasswordDigest tokens should validate with digest');
+}
+
+function runRecentAuthReuseTest() {
+  const reuseService = new SoapService(config, <any>{});
+  reuseService.recentAuthWindowMs = 2000;
+
+  const nonce = Buffer.from('reuse-nonce').toString('base64');
+  const created = '2024-01-01T00:00:00Z';
+  const pwHash = crypto.createHash('sha1');
+  const combined = Buffer.concat([
+    Buffer.from(nonce, 'base64'),
+    Buffer.from(created, 'ascii'),
+    Buffer.from(config.Password, 'ascii')
+  ]);
+  pwHash.update(combined);
+  const digest = pwHash.digest('base64');
+
+  const token = {
+    Username: 'admin',
+    Password: {
+      $value: digest,
+      attributes: {
+        Type: 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest'
+      }
+    },
+    Nonce: nonce,
+    Created: created
+  };
+
+  assert.strictEqual(reuseService.validateUsernameToken(token), true, 'Digest token should validate and set recent auth');
+  assert.strictEqual(reuseService.hasRecentAuth(), true, 'Successful validation should mark recent auth window');
+
+  reuseService.lastValidAuthAt = Date.now() - reuseService.recentAuthWindowMs - 50;
+  assert.strictEqual(reuseService.hasRecentAuth(), false, 'Auth window should expire after configured duration');
 }
 
 function runHeaderExtractionTests() {
@@ -107,5 +141,6 @@ runPasswordTextTest();
 runPasswordTextArrayWrappedTest();
 runPasswordDigestTest();
 runHeaderExtractionTests();
+runRecentAuthReuseTest();
 
 console.log('SoapService token validation tests passed');

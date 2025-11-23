@@ -37,6 +37,8 @@ class SoapService {
   serviceOptions: SoapServiceOptions;
   startedCallbacks: (() => void)[];
   isStarted: boolean;
+  lastValidAuthAt: number;
+  recentAuthWindowMs: number;
 
   constructor(config: rposConfig, server: Server) {
     this.webserver = server;
@@ -52,6 +54,9 @@ class SoapService {
       wsdlPath: '',
       onReady: () => { }
     };
+
+    this.lastValidAuthAt = 0;
+    this.recentAuthWindowMs = 5 * 60 * 1000; // 5 minutes
 
   }
 
@@ -82,12 +87,18 @@ class SoapService {
 
       if (this.config.Username) {
         const { token, debug } = this.extractUsernameToken(request);
+        const tokenIsValid = token ? this.validateUsernameToken(token) : false;
+        const hasRecentAuth = this.hasRecentAuth();
         if (!token) {
+          if (hasRecentAuth) {
+            utils.log.info('[AuthDebug] Reusing recent valid UsernameToken for ' + methodName, debug);
+            return;
+          }
           utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, debug);
           throw NOT_IMPLEMENTED;
         }
 
-        if (!this.validateUsernameToken(token)) {
+        if (!tokenIsValid) {
           utils.log.info('Invalid username/password with ' + methodName);
           throw NOT_IMPLEMENTED;
         }
@@ -140,6 +151,10 @@ class SoapService {
     };
 
     return { token, debug };
+  }
+
+  hasRecentAuth(): boolean {
+    return !!this.lastValidAuthAt && (Date.now() - this.lastValidAuthAt) < this.recentAuthWindowMs;
   }
 
   onStarted(callback: () => {}) {
@@ -206,6 +221,7 @@ class SoapService {
         expectedPassword: onvif_password,
         result: isMatch,
       });
+      if (isMatch) this.lastValidAuthAt = Date.now();
       return isMatch;
     }
 
@@ -231,6 +247,7 @@ class SoapService {
       result: isDigestMatch,
     });
 
+    if (isDigestMatch) this.lastValidAuthAt = Date.now();
     return isDigestMatch;
   }
 }
