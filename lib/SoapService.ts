@@ -3,6 +3,7 @@
 import fs = require("fs");
 import { Utils }  from './utils';
 import { Server } from 'http';
+import crypto = require('crypto');
 var soap = <any>require('soap');
 var utils = Utils.utils;
 
@@ -80,37 +81,19 @@ class SoapService {
       if (methodName === "GetSystemDateAndTime") return;
 
       if (this.config.Username) {
-        let token: any = null;
-        try {
-          token = request.Header.Security.UsernameToken;
-        } catch (err) {
-          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName);
+        const token = request?.Header?.Security?.UsernameToken;
+        if (!token) {
+          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, {
+            header: request?.Header,
+          });
           throw NOT_IMPLEMENTED;
         }
-        var user = token.Username;
-        var password = (token.Password.$value || token.Password);
-        var nonce = (token.Nonce.$value || token.Nonce); // handle 2 ways to map XML to the javascript data structure
-        var created = token.Created;
 
-        var onvif_username = this.config.Username;
-        var onvif_password = this.config.Password;
-
-        // digest = base64 ( sha1 ( nonce + created + onvif_password ) )
-        var crypto = require('crypto');
-        var pwHash = crypto.createHash('sha1');
-        var rawNonce = new Buffer(nonce || '', 'base64')
-        var combined_data = Buffer.concat([rawNonce,
-          Buffer.from(created, 'ascii'), Buffer.from(onvif_password, 'ascii')]);
-        pwHash.update(combined_data);
-        var generated_password = pwHash.digest('base64');
-
-        var password_ok = (user === onvif_username && password === generated_password);
-
-        if (password_ok == false) {
+        if (!this.validateUsernameToken(token)) {
           utils.log.info('Invalid username/password with ' + methodName);
           throw NOT_IMPLEMENTED;
         }
-      };
+      }
     });
 
     this.serviceInstance.log = (type: string, data: any) => {
@@ -132,6 +115,74 @@ class SoapService {
       callback();
     this.startedCallbacks = [];
     this.started();
+  }
+
+  validateUsernameToken(token: any): boolean {
+    const username = token?.Username?.$value ?? token?.Username ?? '';
+    const passwordElement = token?.Password;
+    const password = passwordElement?.$value ?? passwordElement ?? '';
+    const passwordType = passwordElement?.attributes?.Type ?? passwordElement?.Type ?? '';
+    const nonce = token?.Nonce?.$value ?? token?.Nonce ?? '';
+    const created = token?.Created?.$value ?? token?.Created ?? '';
+
+    const onvif_username = this.config.Username;
+    const onvif_password = this.config.Password;
+
+    utils.log.info('[AuthDebug] Parsed UsernameToken', {
+      username,
+      passwordType: passwordType || 'PasswordDigest',
+      nonce,
+      created,
+    });
+
+    if (!username || !password || !onvif_username) {
+      utils.log.info('[AuthDebug] Missing credential fields', {
+        hasUsername: !!username,
+        hasPassword: !!password,
+        hasConfiguredUsername: !!onvif_username,
+        hasNonce: !!nonce,
+        hasCreated: !!created,
+      });
+      return false;
+    }
+
+    const isPasswordText = typeof passwordType === 'string' && passwordType.indexOf('PasswordText') !== -1;
+
+    if (isPasswordText) {
+      const isMatch = username === onvif_username && password === onvif_password;
+      utils.log.info('[AuthDebug] PasswordText comparison', {
+        providedUsername: username,
+        expectedUsername: onvif_username,
+        providedPassword: password,
+        expectedPassword: onvif_password,
+        result: isMatch,
+      });
+      return isMatch;
+    }
+
+    const rawNonce = Buffer.from(nonce || '', 'base64');
+    const combined_data = Buffer.concat([
+      rawNonce,
+      Buffer.from(created || '', 'ascii'),
+      Buffer.from(onvif_password || '', 'ascii')
+    ]);
+
+    const pwHash = crypto.createHash('sha1');
+    pwHash.update(combined_data);
+    const generated_password = pwHash.digest('base64');
+
+    const isDigestMatch = username === onvif_username && password === generated_password;
+    utils.log.info('[AuthDebug] PasswordDigest comparison', {
+      providedUsername: username,
+      expectedUsername: onvif_username,
+      providedPasswordDigest: password,
+      generatedPasswordDigest: generated_password,
+      rawNonce: nonce,
+      created,
+      result: isDigestMatch,
+    });
+
+    return isDigestMatch;
   }
 }
 export = SoapService;
