@@ -57,24 +57,24 @@ cam_mutex = Lock()
 # -------------------
 
 class StreamServer:
-        def __init__(self, type, device, file, port, name, width, height, codec, pattern=None, preset=None, framerate=None):
-                signal.signal(signal.SIGTERM, self.exit_gracefully)
-                Gst.init(None)
-                self.mainloop = GObject.MainLoop()
-                self.server = GstRtspServer.RTSPServer()
-                self.mounts = self.server.get_mount_points()
+	def __init__(self, type, device, file, port, name, width, height, codec, pattern=None, preset=None, framerate=None):
+		signal.signal(signal.SIGTERM, self.exit_gracefully)
+		Gst.init(None)
+		self.mainloop = GObject.MainLoop()
+		self.server = GstRtspServer.RTSPServer()
+		self.mounts = self.server.get_mount_points()
 		
-                self.device = device
-                self.type = type
-                self.file = file
+		self.device = device
+		self.type = type
+		self.file = file
 
-                self.port = port
-                self.name = name
+		self.port = port
+		self.name = name
 
 		self.pattern = (pattern or "ball").lower()
 		self.preset = preset.lower() if preset else None
 
-                self.factory = GstRtspServer.RTSPMediaFactory()
+		self.factory = GstRtspServer.RTSPMediaFactory()
 		# Factory must be shared to allow multiple connections
 		self.factory.set_shared(True)
 		self.context_id = 0
@@ -167,13 +167,13 @@ class StreamServer:
 		self.gain_blue_range = [0.0, 8.0]
 		self.gain_blue = 1.0
 		
-self.width_options = {0:640, 1:800, 2:1024, 3:1280, 4:1640, 5:1920}
-self.default_width = 1280
-self.width = width
-self.height_options = {0:480, 1:600, 2:720, 3:768, 4:1024, 5:1232, 6:1080}
-self.default_height = 720
-self.height = height
-self.apply_preset()
+		self.width_options = {0:640, 1:800, 2:1024, 3:1280, 4:1640, 5:1920}
+		self.default_width = 1280
+		self.width = width
+		self.height_options = {0:480, 1:600, 2:720, 3:768, 4:1024, 5:1232, 6:1080}
+		self.default_height = 720
+		self.height = height
+		self.apply_preset()
 		
 		self.rotation = 0
 		
@@ -183,11 +183,11 @@ self.apply_preset()
 		self.stop()
 		self.stayAwake = False
 	
-        def check_range(self, value, value_range):
-                return value >= value_range[0] and value <= value_range[1]
+	def check_range(self, value, value_range):
+		return value >= value_range[0] and value <= value_range[1]
 
-        def check_option(self, option, options):
-                return options.has_key(option)
+	def check_option(self, option, options):
+		return options.has_key(option)
 
 	def apply_preset(self):
 		preset_map = {"1080p": (1920, 1080), "720p": (1280, 720), "480p": (640, 480)}
@@ -296,9 +296,9 @@ self.apply_preset()
 			self.stop() # Need to stop any instances first
 		
 		if self.type == "picam":
-                        # This asks the Pi GPU to generate H264 video data which is then passed out via RTSP
-                        # Because the pipleline receives H264 video data (NALs) is not possible to add the clock overlay
-                        # To add a clock, we must get raw video from the GPU and then add the clock, and then pass into the GPU to encode (or use libx264 to encode in software)
+		        # This asks the Pi GPU to generate H264 video data which is then passed out via RTSP
+		        # Because the pipleline receives H264 video data (NALs) is not possible to add the clock overlay
+		        # To add a clock, we must get raw video from the GPU and then add the clock, and then pass into the GPU to encode (or use libx264 to encode in software)
 
 			launch_str = 	'( rpicamsrc preview=false bitrate='+str(self.bitrate)+' keyframe-interval='+str(self.h264_i_frame_period)+' drc='+str(self.drc)+ \
 								' image-effect=denoise shutter-speed='+str(self.shutter)+' iso='+str(self.iso)+ \
@@ -355,8 +355,8 @@ self.apply_preset()
 
 		elif self.type == "filesrc":
 			# Generate a black test image and overlay a jpeg (scaling to fit the image). Encoded to H264 using libx264.
-                        # On a Pi this could have passed the raw image to the GPU (omxh264enc)
-                        # I did try the videomixer/compositor and a filesrc plus imagefreeze but the only thing I could get working real-time was gdkpixbuffer
+		        # On a Pi this could have passed the raw image to the GPU (omxh264enc)
+		        # I did try the videomixer/compositor and a filesrc plus imagefreeze but the only thing I could get working real-time was gdkpixbuffer
 
 			# Ignore most of the parameters
 			log.info("Test camera ignored most of the parameters")
