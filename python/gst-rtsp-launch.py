@@ -336,20 +336,20 @@ class StreamServer:
 				pattern = "smpte"
 
 			if selected_pattern == "file":
-				launch_str = '( filesrc location="' + source_path + '" ! decodebin ! videoconvert ! videoscale ! video/x-raw,width='+str(self.width)+',height='+str(self.height)+',framerate='+str(self.fps)+'/1 '
+				launch_str = "( filesrc location=\"" + source_path + "\" ! decodebin ! videoconvert ! videoscale ! video/x-raw,width="+str(self.width)+",height="+str(self.height)+",framerate="+str(self.fps)+"/1 "
 			elif selected_pattern == "image":
 				image_path = source_path if source_path else "sample_image.jpg"
-				launch_str = '( videotestsrc pattern=black is-live=true ! video/x-raw,width='+str(self.width)+',height='+str(self.height)+',framerate='+str(self.fps)+'/1 '
-				launch_str = launch_str + ' ! gdkpixbufoverlay location="' + image_path + '" overlay-width=' + str(self.width) + ' overlay-height=' + str(self.height) + ' '
+				launch_str = "( videotestsrc pattern=black is-live=true ! video/x-raw,width="+str(self.width)+",height="+str(self.height)+",framerate="+str(self.fps)+"/1 "
+				launch_str = launch_str + " ! gdkpixbufoverlay location=\"" + image_path + "\" overlay-width=" + str(self.width) + " overlay-height=" + str(self.height) + " "
 			else:
-				launch_str = '( videotestsrc pattern='+pattern+' is-live=true ! video/x-raw,width='+str(self.width)+',height='+str(self.height)+',framerate='+str(self.fps)+'/1 '
-			launch_str = launch_str + ' ! clockoverlay '
+				launch_str = "( videotestsrc pattern="+pattern+" is-live=true ! video/x-raw,width="+str(self.width)+",height="+str(self.height)+",framerate="+str(self.fps)+"/1 "
+			launch_str = launch_str + " ! clockoverlay "
 
 			# Completing the pipe
 			if self.codec == 0:
-				launch_str = launch_str + ' ! x264enc tune=zerolatency ! h264parse ! rtph264pay name=pay0 pt=96)'
+				launch_str = launch_str + " ! x264enc tune=zerolatency ! h264parse ! rtph264pay name=pay0 pt=96 )"
 			elif self.codec == 1:
-				launch_str = launch_str + ' ! jpegenc ! jpegparse ! rtpjpegpay name=pay0 pt=96 )'
+				launch_str = launch_str + " ! jpegenc ! jpegparse ! rtpjpegpay name=pay0 pt=96 )"
 			else:
 				log.error("Illegal codec")
 
