@@ -157,6 +157,18 @@ class SoapService {
   }
 
   validateUsernameToken(token: any): boolean {
+    const authDebugEnabled = this.config.AuthDebug === true;
+    const logAuthDebug = (message: string, data?: any) => {
+      if (authDebugEnabled) {
+        utils.log.info(message, data);
+      }
+    };
+    const logAuthOutcome = (result: boolean) => {
+      if (utils.log.level >= Utils.logLevel.Debug) {
+        utils.log.debug(`Auth received: ${result ? 'Pass' : 'Fail'}`);
+      }
+    };
+
     const username = token?.Username?.$value ?? token?.Username ?? '';
     const passwordElement = token?.Password;
     const password = passwordElement?.$value ?? passwordElement ?? '';
@@ -167,7 +179,7 @@ class SoapService {
     const onvif_username = this.config.Username;
     const onvif_password = this.config.Password;
 
-    utils.log.info('[AuthDebug] Parsed UsernameToken', {
+    logAuthDebug('[AuthDebug] Parsed UsernameToken', {
       username,
       passwordType: passwordType || 'PasswordDigest',
       nonce,
@@ -175,13 +187,14 @@ class SoapService {
     });
 
     if (!username || !password || !onvif_username) {
-      utils.log.info('[AuthDebug] Missing credential fields', {
+      logAuthDebug('[AuthDebug] Missing credential fields', {
         hasUsername: !!username,
         hasPassword: !!password,
         hasConfiguredUsername: !!onvif_username,
         hasNonce: !!nonce,
         hasCreated: !!created,
       });
+      logAuthOutcome(false);
       return false;
     }
 
@@ -189,13 +202,14 @@ class SoapService {
 
     if (isPasswordText) {
       const isMatch = username === onvif_username && password === onvif_password;
-      utils.log.info('[AuthDebug] PasswordText comparison', {
+      logAuthDebug('[AuthDebug] PasswordText comparison', {
         providedUsername: username,
         expectedUsername: onvif_username,
         providedPassword: password,
         expectedPassword: onvif_password,
         result: isMatch,
       });
+      logAuthOutcome(isMatch);
       return isMatch;
     }
 
@@ -211,7 +225,7 @@ class SoapService {
     const generated_password = pwHash.digest('base64');
 
     const isDigestMatch = username === onvif_username && password === generated_password;
-    utils.log.info('[AuthDebug] PasswordDigest comparison', {
+    logAuthDebug('[AuthDebug] PasswordDigest comparison', {
       providedUsername: username,
       expectedUsername: onvif_username,
       providedPasswordDigest: password,
@@ -221,6 +235,7 @@ class SoapService {
       result: isDigestMatch,
     });
 
+    logAuthOutcome(isDigestMatch);
     return isDigestMatch;
   }
 }

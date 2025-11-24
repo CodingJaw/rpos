@@ -25,6 +25,7 @@ interface rposConfig {
   DeviceInformation: DeviceInformation;
   logLevel: number;
   logSoapCalls: Boolean;
+  AuthDebug?: boolean;
 }
 
 interface PTZSerialPortSettings {
