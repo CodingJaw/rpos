@@ -226,11 +226,11 @@ class EventsService extends SoapService {
 
   private cleanupExpiredSubscriptions() {
     const now = Date.now();
-    for (const [id, subscription] of this.subscriptions.entries()) {
+    this.subscriptions.forEach((subscription, id) => {
       if (subscription.terminationTime.getTime() < now) {
         this.subscriptions.delete(id);
       }
-    }
+    });
   }
 
   private enqueueInitialState(id: string, message: NotificationMessage) {
@@ -241,9 +241,9 @@ class EventsService extends SoapService {
 
   private broadcastNotification(message: NotificationMessage) {
     this.cleanupExpiredSubscriptions();
-    for (const subscription of this.subscriptions.values()) {
+    this.subscriptions.forEach(subscription => {
       subscription.queue.push(message);
-    }
+    });
   }
 
   private createSimpleNotification(topic: string, stateName: string, isActive: boolean): NotificationMessage {
