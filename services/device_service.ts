@@ -200,11 +200,11 @@ class DeviceService extends SoapService {
           Extension: {}
         };
       }
-      if (category == undefined || category == "All" || category == "Events") {
+          if (category == undefined || category == "All" || category == "Events") {
         GetCapabilitiesResponse.Capabilities["Events"] = {
           XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/events_service`,
           WSSubscriptionPolicySupport: false,
-          WSPullPointSupport: false,
+          WSPullPointSupport: true,
           WSPausableSubscriptionManagerInterfaceSupport: false
         }
       }
