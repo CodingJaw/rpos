@@ -116,26 +116,12 @@ class EventsService extends SoapService {
     // CreatePullPointSubscription response so the request is handled gracefully.
     port.Subscribe = (args: any) => {
       const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
-      return {
-        SubscriptionReference: {
-          Address: `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service/subscription/${id}`,
-          ReferenceParameters: { SubscriptionId: id }
-        },
-        CurrentTime: new Date().toISOString(),
-        TerminationTime: terminationTime.toISOString()
-      };
+      return this.buildWsntSubscribeResponse(id, terminationTime);
     };
 
     port.CreatePullPointSubscription = (args: any) => {
       const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
-      const response: any = {
-        SubscriptionReference: {
-          Address: `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service/subscription/${id}`,
-          ReferenceParameters: { SubscriptionId: id }
-        },
-        CurrentTime: new Date().toISOString(),
-        TerminationTime: terminationTime.toISOString()
-      };
+      const response: any = this.buildWsntSubscribeResponse(id, terminationTime);
 
       if (this.motionState !== null) {
         this.enqueueInitialState(id, this.createSimpleNotification('tns1:RuleEngine/CellMotionDetector/Motion', 'IsMotion', this.motionState));
@@ -194,6 +180,22 @@ class EventsService extends SoapService {
     const terminationTime = this.calculateTermination(initialTermination);
     this.subscriptions.set(id, { id, terminationTime, queue: [] });
     return { id, terminationTime };
+  }
+
+  private buildWsntSubscribeResponse(id: string, terminationTime: Date) {
+    return {
+      attributes: { 'xmlns:wsnt': 'http://docs.oasis-open.org/wsn/b-2' },
+      'wsnt:SubscriptionReference': {
+        attributes: { 'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing' },
+        'wsa5:Address': `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service/subscription/${id}`,
+        'wsa5:ReferenceParameters': {
+          attributes: { 'xmlns:tev': 'http://www.onvif.org/ver10/events/wsdl' },
+          'tev:SubscriptionId': id
+        }
+      },
+      'wsnt:CurrentTime': new Date().toISOString(),
+      'wsnt:TerminationTime': terminationTime.toISOString()
+    };
   }
 
   private calculateTermination(requested?: string): Date {
