@@ -184,17 +184,19 @@ class EventsService extends SoapService {
 
   private buildWsntSubscribeResponse(id: string, terminationTime: Date) {
     return {
-      attributes: { 'xmlns:wsnt': 'http://docs.oasis-open.org/wsn/b-2' },
-      'wsnt:SubscriptionReference': {
-        attributes: { 'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing' },
+      attributes: {
+        xmlns: 'http://www.onvif.org/ver10/events/wsdl',
+        'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing'
+      },
+      SubscriptionReference: {
         'wsa5:Address': `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service/subscription/${id}`,
         'wsa5:ReferenceParameters': {
           attributes: { 'xmlns:tev': 'http://www.onvif.org/ver10/events/wsdl' },
           'tev:SubscriptionId': id
         }
       },
-      'wsnt:CurrentTime': new Date().toISOString(),
-      'wsnt:TerminationTime': terminationTime.toISOString()
+      CurrentTime: new Date().toISOString(),
+      TerminationTime: terminationTime.toISOString()
     };
   }
 
