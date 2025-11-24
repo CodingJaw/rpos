@@ -110,21 +110,37 @@ class DeviceService extends SoapService {
             Minor : 5,
           }
         },
-        { 
+        {
           Namespace : "http://www.onvif.org/ver10/media/wsdl",
           XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media_service`,
-          Version : { 
+          Version : {
             Major : 2,
             Minor : 5,
           }
         },
-        { 
+        {
+          Namespace : "http://www.onvif.org/ver20/media/wsdl",
+          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media2_service`,
+          Version : {
+            Major : 2,
+            Minor : 0,
+          }
+        },
+        {
           Namespace : "http://www.onvif.org/ver20/ptz/wsdl",
           XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/ptz_service`,
-          Version : { 
+          Version : {
             Major : 2,
             Minor : 5,
           },
+        },
+        {
+          Namespace : "http://www.onvif.org/ver10/recording/wsdl",
+          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/recording_service`,
+          Version : {
+            Major : 1,
+            Minor : 0,
+          }
         }]
       };
 
@@ -225,9 +241,17 @@ class DeviceService extends SoapService {
           Extension: {
             ProfileCapabilities: {
               MaximumNumberOfProfiles: 1
+            },
+            Media2: {
+              XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media2_service`
             }
           }
-        }
+        };
+      }
+      if (category === undefined || category == "All" || category == "Recording") {
+        GetCapabilitiesResponse.Capabilities["Recording"] = {
+          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/recording_service`
+        };
       }
       if (category === undefined || category == "All" || category == "PTZ") {
         GetCapabilitiesResponse.Capabilities["PTZ"] = {

@@ -34,9 +34,12 @@ import Camera = require("./lib/camera");
 import PTZDriver = require("./lib/PTZDriver");
 import DeviceService = require("./services/device_service");
 import MediaService = require("./services/media_service");
+import Media2Service = require("./services/media2_service");
+import RecordingService = require("./services/recording_service");
 import PTZService = require("./services/ptz_service");
 import ImagingService = require("./services/imaging_service");
 import DiscoveryService = require("./services/discovery_service");
+import { RecordingStore } from "./lib/recordingStore";
 
 import { exit } from "process";
 
@@ -123,11 +126,16 @@ let camera = new Camera(config, webserver);
 let device_service = new DeviceService(config, httpserver, ptz_driver.process_ptz_command);
 let ptz_service = new PTZService(config, httpserver, ptz_driver.process_ptz_command, ptz_driver);
 let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_ptz_command);
+let recording_store = new RecordingStore();
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
+let media2_service = new Media2Service(config, httpserver, recording_store);
+let recording_service = new RecordingService(config, httpserver, recording_store);
 let discovery_service = new DiscoveryService(config);
 
 device_service.start();
 media_service.start();
+media2_service.start();
+recording_service.start();
 ptz_service.start();
 imaging_service.start();
 discovery_service.start();
