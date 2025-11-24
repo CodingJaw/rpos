@@ -219,11 +219,7 @@ class Camera {
     const isV4L2Camera = this.config.CameraType !== 'testsrc' && this.config.CameraType !== 'filesrc';
 
     if (!isV4L2Camera) {
-      this.testSrcOverrides = {
-        width: newsettings.resolution.Width,
-        height: newsettings.resolution.Height,
-        framerate: newsettings.framerate,
-      };
+      this.updateTestSrcOverrides(newsettings);
       return;
     }
 
@@ -239,6 +235,26 @@ class Camera {
     v4l2ctl.Controls.CodecControls.video_bitrate_mode.value = newsettings.quality > 0 ? 0 : 1;
     v4l2ctl.Controls.CodecControls.h264_i_frame_period.value = this.settings.forceGop ? v4l2ctl.Controls.CodecControls.h264_i_frame_period.value : newsettings.gop;
     v4l2ctl.ApplyControls();
+  }
+
+  private updateTestSrcOverrides(newsettings: CameraSettingsParameter) {
+    const nextOverrides = {
+      width: newsettings.resolution.Width,
+      height: newsettings.resolution.Height,
+      framerate: newsettings.framerate,
+    };
+
+    const overridesChanged = nextOverrides.width !== this.testSrcOverrides.width
+      || nextOverrides.height !== this.testSrcOverrides.height
+      || nextOverrides.framerate !== this.testSrcOverrides.framerate;
+
+    this.testSrcOverrides = nextOverrides;
+
+    if (overridesChanged) {
+      utils.log.info(`Updated test source settings to ${nextOverrides.width}x${nextOverrides.height} @ ${nextOverrides.framerate}fps`);
+    }
+
+    return overridesChanged;
   }
 
   private getTestSrcSettings() {
