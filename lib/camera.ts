@@ -43,6 +43,7 @@ class Camera {
   config: rposConfig;
   rtspServer: ChildProcess;
   webserver: any;
+  private testSrcOverrides: { width?: number; height?: number; framerate?: number } = {};
 
   constructor(config: rposConfig, webserver: any) {
     this.config = config;
@@ -212,6 +213,25 @@ class Camera {
   }
 
   setSettings(newsettings: CameraSettingsParameter) {
+    this.settings.resolution = newsettings.resolution;
+    this.settings.framerate = newsettings.framerate;
+
+    const isV4L2Camera = this.config.CameraType !== 'testsrc' && this.config.CameraType !== 'filesrc';
+
+    if (!isV4L2Camera) {
+      this.testSrcOverrides = {
+        width: newsettings.resolution.Width,
+        height: newsettings.resolution.Height,
+        framerate: newsettings.framerate,
+      };
+      return;
+    }
+
+    if (!fs.existsSync('/dev/video0')) {
+      utils.log.warn('Cannot apply V4L2 settings because /dev/video0 is missing');
+      return;
+    }
+
     v4l2ctl.SetResolution(newsettings.resolution);
     v4l2ctl.SetFrameRate(newsettings.framerate);
 
@@ -231,22 +251,30 @@ class Camera {
     const testSrcConfig = this.config.TestSrc || <TestSrcConfig>{};
     const presetKey = (typeof testSrcConfig.Preset === "string") ? testSrcConfig.Preset.toLowerCase() : undefined;
     const presetResolution = presetKey && presetMap[presetKey];
+    const hasValidPreset = Boolean(presetResolution);
+
+    if (presetKey && !hasValidPreset) {
+      utils.log.warn(`Unsupported test source preset '${testSrcConfig.Preset}', ignoring preset`);
+    }
 
     const defaultResolution = this.settings.resolution;
-    const width = testSrcConfig.Width || (presetResolution ? presetResolution.Width : defaultResolution.Width);
-    const height = testSrcConfig.Height || (presetResolution ? presetResolution.Height : defaultResolution.Height);
-    const framerate = testSrcConfig.Framerate || this.settings.framerate;
+    const width = this.testSrcOverrides.width || testSrcConfig.Width || (presetResolution ? presetResolution.Width : defaultResolution.Width);
+    const height = this.testSrcOverrides.height || testSrcConfig.Height || (presetResolution ? presetResolution.Height : defaultResolution.Height);
+    const framerate = this.testSrcOverrides.framerate || testSrcConfig.Framerate || this.settings.framerate;
 
     const configuredPattern = (typeof testSrcConfig.Pattern === "string") ? testSrcConfig.Pattern.toLowerCase() : "ball";
     const allowedPatterns = ["ball", "colorbars", "image", "file"];
     const pattern = allowedPatterns.indexOf(configuredPattern) >= 0 ? configuredPattern : "ball";
+
+    const overridePreset = Object.keys(presetMap).find(key => presetMap[key].Width === width && presetMap[key].Height === height);
+    const preset = overridePreset || (hasValidPreset ? presetKey : undefined);
 
     return {
       width,
       height,
       framerate,
       pattern,
-      preset: testSrcConfig.Preset
+      preset
     };
   }
 
