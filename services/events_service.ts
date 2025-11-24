@@ -185,15 +185,18 @@ class EventsService extends SoapService {
   private buildWsntSubscribeResponse(id: string, terminationTime: Date) {
     return {
       attributes: {
-        xmlns: 'http://www.onvif.org/ver10/events/wsdl',
-        'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing'
+        xmlns: 'http://www.onvif.org/ver10/events/wsdl'
       },
       SubscriptionReference: {
         // Advertise the main events service endpoint so the client posts pull-point
         // calls to a path that the SOAP listener already handles, while still
         // providing the subscription identifier via WS-Addressing reference
-        // parameters.
-        'wsa5:Address': `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service`,
+        // parameters. Keep WS-Addressing elements explicitly in the wsa5 namespace
+        // so they are not serialized with an ONVIF prefix.
+        attributes: { 'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing' },
+        'wsa5:Address': {
+          $value: `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service`
+        },
         'wsa5:ReferenceParameters': {
           SubscriptionId: id
         }
