@@ -26,6 +26,7 @@ interface rposConfig {
   logLevel: number;
   logSoapCalls: Boolean;
   AuthDebug?: boolean;
+  RecordingsStorePath?: string;
 }
 
 interface PTZSerialPortSettings {

@@ -249,13 +249,23 @@ class DeviceService extends SoapService {
           Extension: {
             ProfileCapabilities: {
               MaximumNumberOfProfiles: 1
+            },
+            Recording: {
+              Modes: ['Continuous', 'Motion', 'Alarm'],
+              SupportsSchedules: true
             }
           }
         }
       }
       if (category === undefined || category == "All" || category == "Media2") {
         GetCapabilitiesResponse.Capabilities["Media2"] = {
-          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media2_service`
+          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media2_service`,
+          Extension: {
+            Recording: {
+              Modes: ['Continuous', 'Motion', 'Alarm'],
+              SupportsSchedules: true
+            }
+          }
         }
       }
       if (category === undefined || category == "All" || category == "PTZ") {
