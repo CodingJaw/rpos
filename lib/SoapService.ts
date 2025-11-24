@@ -157,7 +157,7 @@ class SoapService {
   }
 
   validateUsernameToken(token: any): boolean {
-    const authDebugEnabled = this.config.AuthDebug !== false;
+    const authDebugEnabled = this.config.AuthDebug === true;
     const logAuthDebug = (message: string, data?: any) => {
       if (authDebugEnabled) {
         utils.log.info(message, data);

@@ -79,8 +79,6 @@ let config = JSON.parse(data);
 
 utils.log.level = <Utils.logLevel>config.logLevel;
 
-if (config.AuthDebug === undefined) config.AuthDebug = true;
-
 // config.DeviceInformation has Manufacturer, Model, SerialNumer, FirmwareVersion, HardwareId
 // Probe hardware for values, unless they are given in rposConfig.json
 config.DeviceInformation = config.DeviceInformation || {};

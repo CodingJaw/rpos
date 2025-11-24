@@ -32,5 +32,5 @@
   },
   "logLevel" : 3, "logLevelComment": "## LogLevels are > 1:Error 2:Warning 3:Info 4:Debug",
   "logSoapCalls" : false,
-  "AuthDebug": true, "AuthDebugComment": "## Set to false to suppress [AuthDebug] authentication logs"
+  "AuthDebug": false, "AuthDebugComment": "## Set to true to enable [AuthDebug] authentication logs"
 }
