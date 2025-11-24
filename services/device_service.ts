@@ -103,6 +103,14 @@ class DeviceService extends SoapService {
           }
         },
         {
+          Namespace : "http://www.onvif.org/ver10/events/wsdl",
+          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/events_service`,
+          Version : {
+            Major : 2,
+            Minor : 5,
+          }
+        },
+        {
           Namespace : "http://www.onvif.org/ver20/imaging/wsdl",
           XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/imaging_service`,
           Version : {
@@ -219,9 +227,9 @@ class DeviceService extends SoapService {
           if (category == undefined || category == "All" || category == "Events") {
         GetCapabilitiesResponse.Capabilities["Events"] = {
           XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/events_service`,
-          WSSubscriptionPolicySupport: false,
+          WSSubscriptionPolicySupport: true,
           WSPullPointSupport: true,
-          WSPausableSubscriptionManagerInterfaceSupport: false
+          WSPausableSubscriptionManagerInterfaceSupport: true
         }
       }
       if (category === undefined || category == "All" || category == "Imaging") {
