@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:tns="http://www.onvif.org/ver10/recording/wsdl"
+             targetNamespace="http://www.onvif.org/ver10/recording/wsdl">
+  <types>
+    <xsd:schema targetNamespace="http://www.onvif.org/ver10/recording/wsdl" elementFormDefault="qualified">
+      <xsd:element name="GetServiceCapabilities" type="xsd:anyType"/>
+      <xsd:element name="GetServiceCapabilitiesResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:any processContents="lax" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="GetRecordingMode" type="xsd:anyType"/>
+      <xsd:element name="GetRecordingModeResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="Mode" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="SetRecordingMode">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="Mode" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="SetRecordingModeResponse" type="xsd:anyType"/>
+      <xsd:element name="GetRecordingSchedule" type="xsd:anyType"/>
+      <xsd:element name="GetRecordingScheduleResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="Schedule" type="tns:Schedule"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="SetRecordingSchedule">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="Schedule" type="tns:Schedule"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="SetRecordingScheduleResponse" type="xsd:anyType"/>
+      <xsd:element name="GetRecordingConfiguration" type="xsd:anyType"/>
+      <xsd:element name="GetRecordingConfigurationResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="RecordingConfiguration" type="tns:RecordingConfiguration"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:complexType name="ScheduleEntry">
+        <xsd:sequence>
+          <xsd:element name="Day" type="xsd:string"/>
+          <xsd:element name="Start" type="xsd:string"/>
+          <xsd:element name="End" type="xsd:string"/>
+          <xsd:element name="Enabled" type="xsd:boolean"/>
+        </xsd:sequence>
+      </xsd:complexType>
+      <xsd:complexType name="Schedule">
+        <xsd:sequence>
+          <xsd:element name="Entry" type="tns:ScheduleEntry" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+      </xsd:complexType>
+      <xsd:complexType name="RecordingConfiguration">
+        <xsd:sequence>
+          <xsd:element name="Mode" type="xsd:string"/>
+          <xsd:element name="Schedule" type="tns:Schedule"/>
+        </xsd:sequence>
+      </xsd:complexType>
+    </xsd:schema>
+  </types>
+
+  <message name="GetServiceCapabilitiesRequest">
+    <part name="parameters" element="tns:GetServiceCapabilities"/>
+  </message>
+  <message name="GetServiceCapabilitiesResponse">
+    <part name="parameters" element="tns:GetServiceCapabilitiesResponse"/>
+  </message>
+  <message name="GetRecordingModeRequest">
+    <part name="parameters" element="tns:GetRecordingMode"/>
+  </message>
+  <message name="GetRecordingModeResponse">
+    <part name="parameters" element="tns:GetRecordingModeResponse"/>
+  </message>
+  <message name="SetRecordingModeRequest">
+    <part name="parameters" element="tns:SetRecordingMode"/>
+  </message>
+  <message name="SetRecordingModeResponse">
+    <part name="parameters" element="tns:SetRecordingModeResponse"/>
+  </message>
+  <message name="GetRecordingScheduleRequest">
+    <part name="parameters" element="tns:GetRecordingSchedule"/>
+  </message>
+  <message name="GetRecordingScheduleResponse">
+    <part name="parameters" element="tns:GetRecordingScheduleResponse"/>
+  </message>
+  <message name="SetRecordingScheduleRequest">
+    <part name="parameters" element="tns:SetRecordingSchedule"/>
+  </message>
+  <message name="SetRecordingScheduleResponse">
+    <part name="parameters" element="tns:SetRecordingScheduleResponse"/>
+  </message>
+  <message name="GetRecordingConfigurationRequest">
+    <part name="parameters" element="tns:GetRecordingConfiguration"/>
+  </message>
+  <message name="GetRecordingConfigurationResponse">
+    <part name="parameters" element="tns:GetRecordingConfigurationResponse"/>
+  </message>
+
+  <portType name="RecordingPort">
+    <operation name="GetServiceCapabilities">
+      <input message="tns:GetServiceCapabilitiesRequest"/>
+      <output message="tns:GetServiceCapabilitiesResponse"/>
+    </operation>
+    <operation name="GetRecordingMode">
+      <input message="tns:GetRecordingModeRequest"/>
+      <output message="tns:GetRecordingModeResponse"/>
+    </operation>
+    <operation name="SetRecordingMode">
+      <input message="tns:SetRecordingModeRequest"/>
+      <output message="tns:SetRecordingModeResponse"/>
+    </operation>
+    <operation name="GetRecordingSchedule">
+      <input message="tns:GetRecordingScheduleRequest"/>
+      <output message="tns:GetRecordingScheduleResponse"/>
+    </operation>
+    <operation name="SetRecordingSchedule">
+      <input message="tns:SetRecordingScheduleRequest"/>
+      <output message="tns:SetRecordingScheduleResponse"/>
+    </operation>
+    <operation name="GetRecordingConfiguration">
+      <input message="tns:GetRecordingConfigurationRequest"/>
+      <output message="tns:GetRecordingConfigurationResponse"/>
+    </operation>
+  </portType>
+
+  <binding name="RecordingBinding" type="tns:RecordingPort">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="GetServiceCapabilities">
+      <soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/GetServiceCapabilities"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="GetRecordingMode">
+      <soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/GetRecordingMode"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="SetRecordingMode">
+      <soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/SetRecordingMode"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="GetRecordingSchedule">
+      <soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/GetRecordingSchedule"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="SetRecordingSchedule">
+      <soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/SetRecordingSchedule"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="GetRecordingConfiguration">
+      <soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/GetRecordingConfiguration"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+  </binding>
+
+  <service name="RecordingService">
+    <port name="RecordingPort" binding="tns:RecordingBinding">
+      <soap:address location="http://localhost:8000/onvif/recording_service" />
+    </port>
+  </service>
+</definitions>
