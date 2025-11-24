@@ -22,6 +22,20 @@
           </xsd:sequence>
         </xsd:complexType>
       </xsd:element>
+      <xsd:element name="Subscribe">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:any processContents="lax" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="SubscribeResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:any processContents="lax" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
       <xsd:element name="CreatePullPointSubscription">
         <xsd:complexType>
           <xsd:sequence>
@@ -92,6 +106,12 @@
   <message name="GetEventPropertiesResponse">
     <part name="parameters" element="tev:GetEventPropertiesResponse"/>
   </message>
+  <message name="SubscribeRequest">
+    <part name="parameters" element="tev:Subscribe"/>
+  </message>
+  <message name="SubscribeResponse">
+    <part name="parameters" element="tev:SubscribeResponse"/>
+  </message>
   <message name="CreatePullPointSubscriptionRequest">
     <part name="parameters" element="tev:CreatePullPointSubscription"/>
   </message>
@@ -131,6 +151,10 @@
       <input message="tev:GetEventPropertiesRequest"/>
       <output message="tev:GetEventPropertiesResponse"/>
     </operation>
+    <operation name="Subscribe">
+      <input message="tev:SubscribeRequest"/>
+      <output message="tev:SubscribeResponse"/>
+    </operation>
     <operation name="CreatePullPointSubscription">
       <input message="tev:CreatePullPointSubscriptionRequest"/>
       <output message="tev:CreatePullPointSubscriptionResponse"/>
@@ -161,6 +185,11 @@
     </operation>
     <operation name="GetEventProperties">
       <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/GetEventProperties"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="Subscribe">
+      <soap:operation soapAction="http://docs.oasis-open.org/wsn/bw-2/NotificationProducer/SubscribeRequest"/>
       <input><soap:body use="literal"/></input>
       <output><soap:body use="literal"/></output>
     </operation>

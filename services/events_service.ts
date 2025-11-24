@@ -111,6 +111,21 @@ class EventsService extends SoapService {
       };
     };
 
+    // Some clients attempt a NotificationProducer::Subscribe operation even though we only
+    // support pull-point subscriptions. Provide a minimal handler that mirrors the
+    // CreatePullPointSubscription response so the request is handled gracefully.
+    port.Subscribe = (args: any) => {
+      const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
+      return {
+        SubscriptionReference: {
+          Address: `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service/subscription/${id}`,
+          ReferenceParameters: { SubscriptionId: id }
+        },
+        CurrentTime: new Date().toISOString(),
+        TerminationTime: terminationTime.toISOString()
+      };
+    };
+
     port.CreatePullPointSubscription = (args: any) => {
       const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
       const response: any = {
