@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:tev="http://www.onvif.org/ver10/events/wsdl"
+             targetNamespace="http://www.onvif.org/ver10/events/wsdl">
+  <types>
+    <xsd:schema targetNamespace="http://www.onvif.org/ver10/events/wsdl" elementFormDefault="qualified">
+      <xsd:element name="GetServiceCapabilities" type="xsd:anyType"/>
+      <xsd:element name="GetServiceCapabilitiesResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:any processContents="lax" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="GetEventProperties" type="xsd:anyType"/>
+      <xsd:element name="GetEventPropertiesResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:any processContents="lax" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="CreatePullPointSubscription">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="InitialTerminationTime" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="SubscriptionPolicy" type="xsd:anyType" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="CreatePullPointSubscriptionResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:any processContents="lax" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="PullMessages">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="Timeout" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="MessageLimit" type="xsd:int" minOccurs="0"/>
+            <xsd:element name="SubscriptionId" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="PullMessagesResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:any processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="Renew">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="TerminationTime" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="SubscriptionId" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="RenewResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="TerminationTime" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="Unsubscribe">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="SubscriptionId" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="UnsubscribeResponse" type="xsd:anyType"/>
+      <xsd:element name="SetSynchronizationPoint" type="xsd:anyType"/>
+      <xsd:element name="SetSynchronizationPointResponse" type="xsd:anyType"/>
+    </xsd:schema>
+  </types>
+  <message name="GetServiceCapabilitiesRequest">
+    <part name="parameters" element="tev:GetServiceCapabilities"/>
+  </message>
+  <message name="GetServiceCapabilitiesResponse">
+    <part name="parameters" element="tev:GetServiceCapabilitiesResponse"/>
+  </message>
+  <message name="GetEventPropertiesRequest">
+    <part name="parameters" element="tev:GetEventProperties"/>
+  </message>
+  <message name="GetEventPropertiesResponse">
+    <part name="parameters" element="tev:GetEventPropertiesResponse"/>
+  </message>
+  <message name="CreatePullPointSubscriptionRequest">
+    <part name="parameters" element="tev:CreatePullPointSubscription"/>
+  </message>
+  <message name="CreatePullPointSubscriptionResponse">
+    <part name="parameters" element="tev:CreatePullPointSubscriptionResponse"/>
+  </message>
+  <message name="PullMessagesRequest">
+    <part name="parameters" element="tev:PullMessages"/>
+  </message>
+  <message name="PullMessagesResponse">
+    <part name="parameters" element="tev:PullMessagesResponse"/>
+  </message>
+  <message name="RenewRequest">
+    <part name="parameters" element="tev:Renew"/>
+  </message>
+  <message name="RenewResponse">
+    <part name="parameters" element="tev:RenewResponse"/>
+  </message>
+  <message name="UnsubscribeRequest">
+    <part name="parameters" element="tev:Unsubscribe"/>
+  </message>
+  <message name="UnsubscribeResponse">
+    <part name="parameters" element="tev:UnsubscribeResponse"/>
+  </message>
+  <message name="SetSynchronizationPointRequest">
+    <part name="parameters" element="tev:SetSynchronizationPoint"/>
+  </message>
+  <message name="SetSynchronizationPointResponse">
+    <part name="parameters" element="tev:SetSynchronizationPointResponse"/>
+  </message>
+  <portType name="EventsPort">
+    <operation name="GetServiceCapabilities">
+      <input message="tev:GetServiceCapabilitiesRequest"/>
+      <output message="tev:GetServiceCapabilitiesResponse"/>
+    </operation>
+    <operation name="GetEventProperties">
+      <input message="tev:GetEventPropertiesRequest"/>
+      <output message="tev:GetEventPropertiesResponse"/>
+    </operation>
+    <operation name="CreatePullPointSubscription">
+      <input message="tev:CreatePullPointSubscriptionRequest"/>
+      <output message="tev:CreatePullPointSubscriptionResponse"/>
+    </operation>
+    <operation name="PullMessages">
+      <input message="tev:PullMessagesRequest"/>
+      <output message="tev:PullMessagesResponse"/>
+    </operation>
+    <operation name="Renew">
+      <input message="tev:RenewRequest"/>
+      <output message="tev:RenewResponse"/>
+    </operation>
+    <operation name="Unsubscribe">
+      <input message="tev:UnsubscribeRequest"/>
+      <output message="tev:UnsubscribeResponse"/>
+    </operation>
+    <operation name="SetSynchronizationPoint">
+      <input message="tev:SetSynchronizationPointRequest"/>
+      <output message="tev:SetSynchronizationPointResponse"/>
+    </operation>
+  </portType>
+  <binding name="EventsBinding" type="tev:EventsPort">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="GetServiceCapabilities">
+      <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/GetServiceCapabilities"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="GetEventProperties">
+      <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/GetEventProperties"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="CreatePullPointSubscription">
+      <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/CreatePullPointSubscription"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="PullMessages">
+      <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/PullMessages"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="Renew">
+      <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/Renew"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="Unsubscribe">
+      <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/Unsubscribe"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="SetSynchronizationPoint">
+      <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/SetSynchronizationPoint"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+  </binding>
+  <service name="EventsService">
+    <port name="EventsPort" binding="tev:EventsBinding">
+      <soap:address location="http://0.0.0.0/onvif/events_service"/>
+    </port>
+  </service>
+</definitions>
