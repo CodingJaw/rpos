@@ -195,8 +195,7 @@ class EventsService extends SoapService {
         // parameters.
         'wsa5:Address': `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service`,
         'wsa5:ReferenceParameters': {
-          attributes: { 'xmlns:tev': 'http://www.onvif.org/ver10/events/wsdl' },
-          'tev:SubscriptionId': id
+          SubscriptionId: id
         }
       },
       CurrentTime: new Date().toISOString(),
