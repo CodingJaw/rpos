@@ -189,7 +189,11 @@ class EventsService extends SoapService {
         'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing'
       },
       SubscriptionReference: {
-        'wsa5:Address': `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service/subscription/${id}`,
+        // Advertise the main events service endpoint so the client posts pull-point
+        // calls to a path that the SOAP listener already handles, while still
+        // providing the subscription identifier via WS-Addressing reference
+        // parameters.
+        'wsa5:Address': `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service`,
         'wsa5:ReferenceParameters': {
           attributes: { 'xmlns:tev': 'http://www.onvif.org/ver10/events/wsdl' },
           'tev:SubscriptionId': id
