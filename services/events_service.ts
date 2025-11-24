@@ -114,13 +114,19 @@ class EventsService extends SoapService {
     // Some clients attempt a NotificationProducer::Subscribe operation even though we only
     // support pull-point subscriptions. Provide a minimal handler that mirrors the
     // CreatePullPointSubscription response so the request is handled gracefully.
-    port.Subscribe = (args: any) => {
+    port.Subscribe = (args: any, _cb: any, _headers: any, req: any) => {
       const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
+      const callerIp = this.getCallerIp(req);
+      const queueLength = this.subscriptions.get(id)?.queue.length ?? 0;
+      utils.log.debug('Subscribe from %s -> id=%s termination=%s queueLength=%d', callerIp, id, terminationTime.toISOString(), queueLength);
       return this.buildWsntSubscribeResponse(id, terminationTime);
     };
 
-    port.CreatePullPointSubscription = (args: any) => {
+    port.CreatePullPointSubscription = (args: any, _cb: any, _headers: any, req: any) => {
       const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
+      const callerIp = this.getCallerIp(req);
+      let queueLength = this.subscriptions.get(id)?.queue.length ?? 0;
+      utils.log.debug('CreatePullPointSubscription from %s -> id=%s termination=%s queueLength=%d', callerIp, id, terminationTime.toISOString(), queueLength);
       const response: any = this.buildWsntSubscribeResponse(id, terminationTime);
 
       if (this.motionState !== null) {
@@ -130,13 +136,18 @@ class EventsService extends SoapService {
         this.enqueueInitialState(id, this.createSimpleNotification('tns1:Device/Trigger/DigitalInput', 'IsActive', this.alarmState));
       }
 
+      queueLength = this.subscriptions.get(id)?.queue.length ?? queueLength;
+      utils.log.debug('CreatePullPointSubscription initial queue seeded -> id=%s queueLength=%d', id, queueLength);
+
       return response;
     };
 
-    port.PullMessages = (args: any) => {
+    port.PullMessages = (args: any, _cb: any, _headers: any, req: any) => {
       const messageLimit = args?.MessageLimit ? parseInt(args.MessageLimit, 10) : 10;
+      const callerIp = this.getCallerIp(req);
       const subscription = this.getSubscription(args?.SubscriptionId);
       if (!subscription) {
+        utils.log.debug('PullMessages from %s for subscription %s -> not found', callerIp, args?.SubscriptionId ?? '<none>');
         return {
           CurrentTime: new Date().toISOString(),
           TerminationTime: new Date(0).toISOString(),
@@ -147,6 +158,13 @@ class EventsService extends SoapService {
       this.cleanupExpiredSubscriptions();
 
       const messages = subscription.queue.splice(0, Math.max(1, messageLimit));
+      utils.log.debug(
+        'PullMessages from %s for subscription %s -> delivering=%d remainingQueue=%d',
+        callerIp,
+        subscription.id,
+        messages.length,
+        subscription.queue.length
+      );
       return {
         CurrentTime: new Date().toISOString(),
         TerminationTime: subscription.terminationTime.toISOString(),
@@ -154,17 +172,29 @@ class EventsService extends SoapService {
       };
     };
 
-    port.Renew = (args: any) => {
+    port.Renew = (args: any, _cb: any, _headers: any, req: any) => {
+      const callerIp = this.getCallerIp(req);
       const subscription = this.getSubscription(args?.SubscriptionId);
-      if (!subscription) return { TerminationTime: new Date(0).toISOString() };
+      if (!subscription) {
+        utils.log.debug('Renew from %s for subscription %s -> not found', callerIp, args?.SubscriptionId ?? '<none>');
+        return { TerminationTime: new Date(0).toISOString() };
+      }
 
       subscription.terminationTime = this.calculateTermination(args?.TerminationTime);
+      utils.log.debug('Renew from %s for subscription %s -> newTermination=%s queueLength=%d', callerIp, subscription.id, subscription.terminationTime.toISOString(), subscription.queue.length);
       return { TerminationTime: subscription.terminationTime.toISOString() };
     };
 
-    port.Unsubscribe = (args: any) => {
+    port.Unsubscribe = (args: any, _cb: any, _headers: any, req: any) => {
       const id = args?.SubscriptionId;
-      if (id) this.subscriptions.delete(id);
+      const callerIp = this.getCallerIp(req);
+      if (id) {
+        const queueLength = this.subscriptions.get(id)?.queue.length ?? 0;
+        this.subscriptions.delete(id);
+        utils.log.debug('Unsubscribe from %s for subscription %s -> removed=%s queueLength=%d', callerIp, id, (!this.subscriptions.has(id)).toString(), queueLength);
+      } else {
+        utils.log.debug('Unsubscribe from %s with no subscription id supplied', callerIp);
+      }
       return {};
     };
 
@@ -179,6 +209,7 @@ class EventsService extends SoapService {
     const id = crypto.randomBytes(8).toString('hex');
     const terminationTime = this.calculateTermination(initialTermination);
     this.subscriptions.set(id, { id, terminationTime, queue: [] });
+    utils.log.debug('Subscription created -> id=%s termination=%s activeCount=%d', id, terminationTime.toISOString(), this.subscriptions.size);
     return { id, terminationTime };
   }
 
@@ -246,6 +277,7 @@ class EventsService extends SoapService {
     if (this.subscriptions.size === 1) {
       return Array.from(this.subscriptions.values())[0];
     }
+    utils.log.debug('getSubscription -> requested=%s not found (active=%d)', requestedId ?? '<none>', this.subscriptions.size);
     return undefined;
   }
 
@@ -254,6 +286,7 @@ class EventsService extends SoapService {
     this.subscriptions.forEach((subscription, id) => {
       if (subscription.terminationTime.getTime() < now) {
         this.subscriptions.delete(id);
+        utils.log.debug('cleanupExpiredSubscriptions -> removed id=%s', id);
       }
     });
   }
@@ -268,7 +301,21 @@ class EventsService extends SoapService {
     this.cleanupExpiredSubscriptions();
     this.subscriptions.forEach(subscription => {
       subscription.queue.push(message);
+      utils.log.debug('broadcastNotification -> enqueued for %s (queueLength=%d)', subscription.id, subscription.queue.length);
     });
+  }
+
+  private getCallerIp(req: any): string {
+    const forwarded = req?.headers?.['x-forwarded-for'];
+    if (Array.isArray(forwarded)) return forwarded[0];
+    if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
+
+    return (
+      req?.connection?.remoteAddress ||
+      req?.socket?.remoteAddress ||
+      req?.info?.remoteAddress ||
+      'unknown'
+    );
   }
 
   private createSimpleNotification(topic: string, stateName: string, isActive: boolean): NotificationMessage {
