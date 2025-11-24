@@ -213,13 +213,27 @@ class Camera {
   }
 
   setSettings(newsettings: CameraSettingsParameter) {
+    const previousSettings = {
+      resolution: { ...this.settings.resolution },
+      framerate: this.settings.framerate,
+    };
+
     this.settings.resolution = newsettings.resolution;
     this.settings.framerate = newsettings.framerate;
 
     const isV4L2Camera = this.config.CameraType !== 'testsrc' && this.config.CameraType !== 'filesrc';
 
     if (!isV4L2Camera) {
-      this.updateTestSrcOverrides(newsettings);
+      const overridesChanged = this.updateTestSrcOverrides(newsettings);
+      const resolutionChanged = previousSettings.resolution.Width !== newsettings.resolution.Width
+        || previousSettings.resolution.Height !== newsettings.resolution.Height;
+      const framerateChanged = previousSettings.framerate !== newsettings.framerate;
+
+      if ((overridesChanged || resolutionChanged || framerateChanged) && this.rtspServer) {
+        this.stopRtsp();
+        this.startRtsp();
+      }
+
       return;
     }
 
