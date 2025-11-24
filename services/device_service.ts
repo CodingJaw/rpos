@@ -118,21 +118,37 @@ class DeviceService extends SoapService {
             Minor : 5,
           }
         },
-        { 
+        {
           Namespace : "http://www.onvif.org/ver10/media/wsdl",
           XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media_service`,
-          Version : { 
+          Version : {
             Major : 2,
             Minor : 5,
           }
         },
-        { 
+        {
+          Namespace : "http://www.onvif.org/ver20/media/wsdl",
+          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media2_service`,
+          Version : {
+            Major : 2,
+            Minor : 5,
+          }
+        },
+        {
           Namespace : "http://www.onvif.org/ver20/ptz/wsdl",
           XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/ptz_service`,
-          Version : { 
+          Version : {
             Major : 2,
             Minor : 5,
           },
+        },
+        {
+          Namespace : "http://www.onvif.org/ver10/recording/wsdl",
+          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/recording_service`,
+          Version : {
+            Major : 2,
+            Minor : 5,
+          }
         }]
       };
 
@@ -208,7 +224,7 @@ class DeviceService extends SoapService {
           Extension: {}
         };
       }
-      if (category == undefined || category == "All" || category == "Events") {
+          if (category == undefined || category == "All" || category == "Events") {
         GetCapabilitiesResponse.Capabilities["Events"] = {
           XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/events_service`,
           WSSubscriptionPolicySupport: true,
@@ -237,9 +253,27 @@ class DeviceService extends SoapService {
           }
         }
       }
+      if (category === undefined || category == "All" || category == "Media2") {
+        GetCapabilitiesResponse.Capabilities["Media2"] = {
+          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media2_service`
+        }
+      }
       if (category === undefined || category == "All" || category == "PTZ") {
         GetCapabilitiesResponse.Capabilities["PTZ"] = {
           XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/ptz_service`
+        }
+      }
+      if (category === undefined || category == "All" || category == "Recording") {
+        if (!GetCapabilitiesResponse.Capabilities["Extension"]) {
+          GetCapabilitiesResponse.Capabilities["Extension"] = {};
+        }
+        GetCapabilitiesResponse.Capabilities["Extension"]["Recording"] = {
+          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/recording_service`,
+          ReceiverSource: true,
+          MediaProfileSource: true,
+          DynamicRecordings: true,
+          DynamicTracks: true,
+          MaxStringLength: 1024,
         }
       }
       return GetCapabilitiesResponse;
