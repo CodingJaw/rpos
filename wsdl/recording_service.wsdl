@@ -25,30 +25,30 @@
 
   <message name="GetRecordingConfigurationRequest" />
   <message name="GetRecordingConfigurationResponse">
-    <part name="RecordingConfiguration" element="tns:RecordingConfiguration" />
+    <part name="RecordingConfiguration" type="tns:RecordingConfiguration" />
   </message>
 
   <message name="SetRecordingConfigurationRequest">
-    <part name="RecordingConfiguration" element="tns:RecordingConfiguration" />
+    <part name="RecordingConfiguration" type="tns:RecordingConfiguration" />
   </message>
   <message name="SetRecordingConfigurationResponse">
-    <part name="RecordingConfiguration" element="tns:RecordingConfiguration" />
+    <part name="RecordingConfiguration" type="tns:RecordingConfiguration" />
   </message>
 
   <message name="SetRecordingModeRequest">
     <part name="Mode" type="xs:string" />
   </message>
   <message name="SetRecordingModeResponse">
-    <part name="RecordingConfiguration" element="tns:RecordingConfiguration" />
+    <part name="RecordingConfiguration" type="tns:RecordingConfiguration" />
     <part name="Mode" type="xs:string" />
   </message>
 
   <message name="SetRecordingScheduleRequest">
-    <part name="Schedule" element="tns:RecordingSchedule" />
+    <part name="Schedule" type="tns:RecordingSchedule" />
   </message>
   <message name="SetRecordingScheduleResponse">
-    <part name="RecordingConfiguration" element="tns:RecordingConfiguration" />
-    <part name="Schedule" element="tns:RecordingSchedule" />
+    <part name="RecordingConfiguration" type="tns:RecordingConfiguration" />
+    <part name="Schedule" type="tns:RecordingSchedule" />
   </message>
 
   <portType name="RecordingPortType">

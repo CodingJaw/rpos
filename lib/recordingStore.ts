@@ -23,7 +23,7 @@ export interface RecordingConfiguration {
 
 const DEFAULT_MODE: RecordingMode = 'Continuous';
 
-const DEFAULT_SCHEDULE: WeeklySchedule = {
+const createDefaultSchedule = (): WeeklySchedule => ({
   Monday: [],
   Tuesday: [],
   Wednesday: [],
@@ -31,7 +31,7 @@ const DEFAULT_SCHEDULE: WeeklySchedule = {
   Friday: [],
   Saturday: [],
   Sunday: []
-};
+});
 
 export class RecordingStore {
   private storePath: string;
@@ -41,13 +41,16 @@ export class RecordingStore {
     this.storePath = storePath;
     this.configuration = {
       Mode: DEFAULT_MODE,
-      Schedule: DEFAULT_SCHEDULE
+      Schedule: createDefaultSchedule()
     };
     this.load();
   }
 
   getConfiguration(): RecordingConfiguration {
-    return this.configuration;
+    return {
+      Mode: this.configuration.Mode,
+      Schedule: this.cloneSchedule(this.configuration.Schedule)
+    };
   }
 
   setMode(mode: string): RecordingMode {
@@ -58,10 +61,8 @@ export class RecordingStore {
   }
 
   setSchedule(schedule: WeeklySchedule): WeeklySchedule {
-    if (schedule && typeof schedule === 'object') {
-      this.configuration.Schedule = { ...DEFAULT_SCHEDULE, ...schedule };
-      this.save();
-    }
+    this.configuration.Schedule = this.sanitiseSchedule(schedule);
+    this.save();
     return this.configuration.Schedule;
   }
 
@@ -77,7 +78,7 @@ export class RecordingStore {
         const raw = fs.readFileSync(this.storePath, 'utf8');
         const parsed = JSON.parse(raw);
         if (parsed.Mode) this.configuration.Mode = this.normaliseMode(parsed.Mode);
-        if (parsed.Schedule) this.configuration.Schedule = { ...DEFAULT_SCHEDULE, ...parsed.Schedule };
+        this.configuration.Schedule = this.sanitiseSchedule(parsed.Schedule);
       } else {
         this.save();
       }
@@ -85,7 +86,7 @@ export class RecordingStore {
       utils.log.warn('Failed to load recording store, resetting to defaults: %s', error);
       this.configuration = {
         Mode: DEFAULT_MODE,
-        Schedule: DEFAULT_SCHEDULE
+        Schedule: createDefaultSchedule()
       };
       this.save();
     }
@@ -101,6 +102,45 @@ export class RecordingStore {
     } catch (error) {
       utils.log.error('Failed to persist recording store: %s', error);
     }
+  }
+
+  private sanitiseSchedule(schedule?: WeeklySchedule): WeeklySchedule {
+    if (!schedule || typeof schedule !== 'object') {
+      return createDefaultSchedule();
+    }
+
+    const sanitised = createDefaultSchedule();
+
+    Object.keys(schedule).forEach((day) => {
+      const value = (schedule as any)[day];
+      if (Array.isArray(value)) {
+        sanitised[day] = value
+          .map((item) => {
+            const start = item?.Start ? String(item.Start) : '';
+            const end = item?.End ? String(item.End) : '';
+            const mode = item?.Mode ? this.normaliseMode(item.Mode) : undefined;
+
+            if (!start || !end) return undefined;
+
+            return mode ? { Start: start, End: end, Mode: mode } : { Start: start, End: end };
+          })
+          .filter(Boolean) as DayScheduleItem[];
+      }
+    });
+
+    return sanitised;
+  }
+
+  private cloneSchedule(schedule: WeeklySchedule): WeeklySchedule {
+    const clone = createDefaultSchedule();
+    Object.keys(schedule || {}).forEach((day) => {
+      clone[day] = (schedule[day] || []).map((item) => ({
+        Start: item.Start,
+        End: item.End,
+        ...(item.Mode ? { Mode: item.Mode } : {})
+      }));
+    });
+    return clone;
   }
 }
 
