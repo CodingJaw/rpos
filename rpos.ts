@@ -40,6 +40,7 @@ import ImagingService = require("./services/imaging_service");
 import DiscoveryService = require("./services/discovery_service");
 import EventsService = require("./services/events_service");
 import RecordingService = require("./services/recording_service");
+import AlarmInputMonitor = require("./services/alarm_input_monitor");
 import { RecordingConfigStore } from "./lib/recordingStore";
 
 import { exit } from "process";
@@ -134,9 +135,9 @@ let media2_service = new Media2Service(config, httpserver, recordingStore);
 let discovery_service = new DiscoveryService(config);
 let events_service = new EventsService(config, httpserver);
 let recording_service = new RecordingService(config, httpserver, recordingStore);
+let alarm_input_monitor = new AlarmInputMonitor(config, events_service.getAlarmCallback());
 
 (<any>camera).motionStateChanged = events_service.getMotionCallback();
-(<any>ptz_driver).alarmStateChanged = events_service.getAlarmCallback();
 
 device_service.start();
 media_service.start();
