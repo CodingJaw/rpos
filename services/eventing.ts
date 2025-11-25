@@ -35,11 +35,11 @@ export function getSubscription(id: string | undefined) {
 
 export function purgeExpiredSubscriptions() {
   const now = Date.now();
-  for (const [id, sub] of activeSubscriptions.entries()) {
+  activeSubscriptions.forEach((sub, id) => {
     if (now > sub.expiresAt) {
       activeSubscriptions.delete(id);
     }
-  }
+  });
 }
 
 export function pushInputAlarmEvent(channel: string | number, state: string | boolean) {
@@ -84,12 +84,12 @@ export function pushInputAlarmEvent(channel: string | number, state: string | bo
     Message: message
   };
 
-  for (const [id, sub] of activeSubscriptions.entries()) {
+  activeSubscriptions.forEach((sub, id) => {
     if (Date.now() > sub.expiresAt) {
       activeSubscriptions.delete(id);
-      continue;
+      return;
     }
     utils.log.debug('Queueing input event for subscription %s', id);
     sub.queue.push(notification);
-  }
+  });
 }
