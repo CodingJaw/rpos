@@ -92,6 +92,21 @@ class EventService extends SoapService {
         },
       };
     };
+
+    port.Subscribe = (args: any) => {
+      utils.log.info('Subscribe requested but not supported; returning fault');
+      throw {
+        Fault: {
+          Code: {
+            Value: 'soap:Sender',
+            Subcode: { value: 'wsnt:ResourceUnknown' },
+          },
+          Reason: {
+            Text: 'Subscribe is not supported; use CreatePullPointSubscription',
+          },
+        },
+      };
+    };
   }
 }
 

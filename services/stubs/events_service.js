@@ -26,6 +26,10 @@ exports.EventService = {
 
       GetEventProperties: function (args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
+      },
+
+      Subscribe: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
       }
     }
   }
