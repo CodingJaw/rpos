@@ -86,7 +86,11 @@ class SoapService {
       if (methodName === "GetSystemDateAndTime") return;
 
       if (this.config.Username) {
-        const token = request?.Header?.Security?.UsernameToken;
+        const { token, debug } = this.extractUsernameToken(request);
+        if (this.config.AuthDebug === true) {
+          utils.log.info('[AuthDebug] UsernameToken extraction details', debug);
+        }
+
         if (!token) {
           utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, {
             header: request?.Header,
