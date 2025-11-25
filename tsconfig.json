@@ -7,6 +7,10 @@
         "preserveConstEnums": false,
         "sourceMap": true,
         "watch": false,
-        "types": ["node", "jest"]
+        "types": [
+            "node",
+            "jest"
+        ],
+        "typeRoots": ["./node_modules/@types"]
     }
 }
