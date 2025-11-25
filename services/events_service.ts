@@ -216,22 +216,20 @@ class EventsService extends SoapService {
   private buildWsntSubscribeResponse(id: string, terminationTime: Date) {
     const endpointAddress = `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service`;
 
-    // Build the EndpointReference as raw XML to prevent the SOAP serializer from
-    // prepending the ONVIF prefix to WS-Addressing elements. WS-Addressing stays
-    // under the wsa5 namespace; the SubscriptionId remains in the ONVIF namespace.
-    const subscriptionReferenceXml =
-      '<SubscriptionReference xmlns="http://www.onvif.org/ver10/events/wsdl" xmlns:wsa5="http://www.w3.org/2005/08/addressing">' +
-      `<wsa5:Address>${endpointAddress}</wsa5:Address>` +
-      '<wsa5:ReferenceParameters>' +
-      `<SubscriptionId xmlns="http://www.onvif.org/ver10/events/wsdl">${id}</SubscriptionId>` +
-      '</wsa5:ReferenceParameters>' +
-      '</SubscriptionReference>';
-
     return {
       attributes: {
         xmlns: 'http://www.onvif.org/ver10/events/wsdl'
       },
-      SubscriptionReference: { $xml: subscriptionReferenceXml },
+      SubscriptionReference: {
+        attributes: { 'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing' },
+        'wsa5:Address': endpointAddress,
+        'wsa5:ReferenceParameters': {
+          SubscriptionId: {
+            attributes: { xmlns: 'http://www.onvif.org/ver10/events/wsdl' },
+            $value: id
+          }
+        }
+      },
       CurrentTime: new Date().toISOString(),
       TerminationTime: terminationTime.toISOString()
     };
