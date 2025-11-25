@@ -272,7 +272,7 @@ class EventsService extends SoapService {
     if (!subscription) return;
     subscription.queue.push(message);
     if (subscription.consumerUrl) {
-      this.notifyConsumer(subscription.consumerUrl, [message]);
+      this.notifyConsumer(subscription, [message]);
     }
   }
 
@@ -281,15 +281,17 @@ class EventsService extends SoapService {
     this.subscriptions.forEach((subscription) => {
       subscription.queue.push(message);
       if (subscription.consumerUrl) {
-        this.notifyConsumer(subscription.consumerUrl, [message]);
+        this.notifyConsumer(subscription, [message]);
       }
     });
   }
 
-  private notifyConsumer(url: string, messages: NotificationMessage[]) {
+  private notifyConsumer(subscription: PullPointSubscription, messages: NotificationMessage[]) {
+    const url = subscription.consumerUrl;
+    if (!url) return;
     try {
       const target = new URL(url);
-      const body = this.buildNotifyEnvelope(messages);
+      const body = this.buildNotifyEnvelope(subscription.id, url, messages);
       const isHttps = target.protocol === 'https:';
       const requestImpl = isHttps ? require('https') : require('http');
       const options = {
@@ -316,12 +318,23 @@ class EventsService extends SoapService {
     }
   }
 
-  private buildNotifyEnvelope(messages: NotificationMessage[]): string {
+  private buildNotifyEnvelope(subscriptionId: string, consumerUrl: string, messages: NotificationMessage[]): string {
     const messageXml = messages.map((msg) => this.notificationMessageToXml(msg)).join('');
+    const messageId = `uuid:${crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex')}`;
+    const serviceUrl = this.config.ServiceUrl || `http://${utils.getIpAddress()}:${this.config.ServicePort}`;
 
     return [
       '<?xml version="1.0" encoding="utf-8"?>',
-      '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsnt="http://docs.oasis-open.org/wsn/b-2" xmlns:tt="http://www.onvif.org/ver10/schema">',
+      '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsnt="http://docs.oasis-open.org/wsn/b-2" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:wsa="http://www.w3.org/2005/08/addressing">',
+      '<soap:Header>',
+      '<wsa:Action soap:mustUnderstand="1">http://docs.oasis-open.org/wsn/bw-2/NotificationConsumer/Notify</wsa:Action>',
+      `<wsa:MessageID>${messageId}</wsa:MessageID>`,
+      `<wsa:To soap:mustUnderstand="1">${utils.xmlEncode(consumerUrl)}</wsa:To>`,
+      '<wsnt:SubscriptionReference>',
+      `<wsa:Address>${utils.xmlEncode(serviceUrl)}/onvif/events_service/subscription/${subscriptionId}</wsa:Address>`,
+      `<wsa:ReferenceParameters><wsnt:SubscriptionId>${subscriptionId}</wsnt:SubscriptionId></wsa:ReferenceParameters>`,
+      '</wsnt:SubscriptionReference>',
+      '</soap:Header>',
       '<soap:Body>',
       '<wsnt:Notify>',
       messageXml,
