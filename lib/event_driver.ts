@@ -2,12 +2,13 @@ import fs = require('fs');
 
 type AlarmInputChannelState = {
   id: string;
-  path: string;
+  path?: string;
   pollInterval: number;
   debounceMs: number;
   activeHigh: boolean;
   state: boolean | null;
   pending: boolean | null;
+  simulatedOnly?: boolean;
   pollTimer?: NodeJS.Timeout;
   debounceTimer?: NodeJS.Timeout;
 };
@@ -55,6 +56,10 @@ class EventDriver {
       .slice(0, 4)
       .map((input, index) => this.normalizeAlarmInputConfig(input, index))
       .filter((entry): entry is AlarmInputChannelState => !!entry);
+
+    if (this.alarmInputs.length === 0) {
+      this.alarmInputs = Array.from({ length: 4 }, (_, index) => this.createSimulatedChannel(index + 1));
+    }
   }
 
   private normalizeAlarmInputConfig(rawInput: any, index: number): AlarmInputChannelState | null {
@@ -82,7 +87,20 @@ class EventDriver {
     };
   }
 
+  private createSimulatedChannel(index: number): AlarmInputChannelState {
+    return {
+      id: `input${index}`,
+      pollInterval: 200,
+      debounceMs: 200,
+      activeHigh: true,
+      simulatedOnly: true,
+      state: null,
+      pending: null
+    };
+  }
+
   private startAlarmMonitoring(channel: AlarmInputChannelState) {
+    if (!channel.path) return;
     const pollInput = () => {
       const state = this.readAlarmInput(channel);
       if (state === null) return;
@@ -94,6 +112,7 @@ class EventDriver {
   }
 
   private readAlarmInput(channel: AlarmInputChannelState): boolean | null {
+    if (!channel.path) return null;
     try {
       const rawValue = fs.readFileSync(channel.path, 'utf8').trim();
       const numericValue = parseInt(rawValue, 10);
@@ -124,10 +143,26 @@ class EventDriver {
   }
 
   public simulateAlarmInput(channelId: string, isActive: boolean): boolean {
-    const channel = this.alarmInputs.find((input) => input.id === channelId);
+    const channel = this.findAlarmChannel(channelId);
     if (!channel) return false;
     this.handleAlarmSample(channel, isActive);
     return true;
+  }
+
+  private findAlarmChannel(channelId: string): AlarmInputChannelState | undefined {
+    const normalizedId = channelId.trim();
+    const candidateIds = [normalizedId];
+
+    if (/^\d+$/.test(normalizedId)) {
+      candidateIds.push(`input${normalizedId}`);
+    } else if (normalizedId.toLowerCase().startsWith('input')) {
+      const suffix = normalizedId.substring(5);
+      if (suffix) {
+        candidateIds.push(suffix);
+      }
+    }
+
+    return this.alarmInputs.find((input) => candidateIds.includes(input.id));
   }
 }
 
