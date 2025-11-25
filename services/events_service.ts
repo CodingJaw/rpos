@@ -1,10 +1,11 @@
 ///<reference path="../rpos.d.ts" />
 
-import fs = require('fs');
 import { Utils } from '../lib/utils';
 import SoapService = require('../lib/SoapService');
 import { Server } from 'http';
 import crypto = require('crypto');
+import EventDriver = require('../lib/event_driver');
+import { AlarmInputChannel } from '../lib/event_driver';
 
 const utils = Utils.utils;
 
@@ -20,25 +21,14 @@ type PullPointSubscription = {
   queue: NotificationMessage[];
 };
 
-type AlarmInputChannel = {
-  id: string;
-  path: string;
-  pollInterval: number;
-  debounceMs: number;
-  activeHigh: boolean;
-  state: boolean | null;
-  pending: boolean | null;
-  pollTimer?: NodeJS.Timeout;
-  debounceTimer?: NodeJS.Timeout;
-};
-
 class EventsService extends SoapService {
   private subscriptions: Map<string, PullPointSubscription> = new Map();
   private defaultTerminationSeconds = 15 * 60; // 15 minutes
   private motionState: boolean | null = null;
   private alarmInputs: AlarmInputChannel[] = [];
+  private eventDriver?: EventDriver;
 
-  constructor(config: rposConfig, server: Server) {
+  constructor(config: rposConfig, server: Server, eventDriver?: EventDriver) {
     super(config, server);
 
     this.serviceOptions = {
@@ -49,7 +39,12 @@ class EventsService extends SoapService {
       onReady: () => utils.log.info('events_service started')
     };
 
-    this.configureAlarmInputs(config);
+    this.eventDriver = eventDriver;
+    if (this.eventDriver) {
+      this.alarmInputs = this.eventDriver.getAlarmInputs();
+      this.eventDriver.onAlarmStateChanged((channelId, isActive) => this.publishAlarmState(channelId, isActive));
+      this.eventDriver.start();
+    }
   }
 
   public publishMotionState(isActive: boolean) {
@@ -64,7 +59,7 @@ class EventsService extends SoapService {
 
   public publishAlarmState(channelId: string, isActive: boolean) {
     const channel = this.alarmInputs.find((input) => input.id === channelId);
-    if (!channel || channel.state === isActive) return;
+    if (!channel) return;
     channel.state = isActive;
     this.broadcastNotification(this.createSimpleNotification(
       'tns1:Device/Trigger/DigitalInput',
@@ -76,103 +71,6 @@ class EventsService extends SoapService {
 
   public getMotionCallback(): (state: boolean) => void {
     return (state: boolean) => this.publishMotionState(state);
-  }
-
-  public getAlarmCallback(): (state: boolean) => void {
-    return (state: boolean) => {
-      if (this.alarmInputs.length === 0) return;
-      this.publishAlarmState(this.alarmInputs[0].id, state);
-    };
-  }
-
-  private configureAlarmInputs(config: rposConfig) {
-    const configured = (<any>config).AlarmInputs;
-    const inputs = Array.isArray(configured) ? configured : [];
-
-    if (inputs.length === 0) {
-      const alarmInputPath = (<any>config).AlarmInputPath;
-      const alarmInputPin = (<any>config).AlarmInputPin;
-
-      if (alarmInputPath || alarmInputPin !== undefined && alarmInputPin !== null) {
-        inputs.push({
-          Path: alarmInputPath,
-          Pin: alarmInputPin,
-          PollInterval: (<any>config).AlarmInputPollInterval,
-          DebounceMs: (<any>config).AlarmInputDebounceMs,
-          ActiveHigh: (<any>config).AlarmInputActiveHigh
-        });
-      }
-    }
-
-    this.alarmInputs = inputs
-      .slice(0, 4)
-      .map((input, index) => this.normalizeAlarmInputConfig(input, index))
-      .filter((entry): entry is AlarmInputChannel => !!entry);
-
-    this.alarmInputs.forEach((channel) => this.startAlarmMonitoring(channel));
-  }
-
-  private normalizeAlarmInputConfig(rawInput: any, index: number): AlarmInputChannel | null {
-    const path = rawInput?.Path
-      ? rawInput.Path
-      : rawInput?.Pin !== undefined && rawInput?.Pin !== null
-        ? `/sys/class/gpio/gpio${rawInput.Pin}/value`
-        : undefined;
-
-    if (!path) return null;
-
-    const pollInterval = typeof rawInput?.PollInterval === 'number' ? rawInput.PollInterval : 200;
-    const debounceMs = typeof rawInput?.DebounceMs === 'number' ? rawInput.DebounceMs : 200;
-    const activeHigh = typeof rawInput?.ActiveHigh === 'boolean' ? rawInput.ActiveHigh : true;
-    const id = rawInput?.Id || `input${index + 1}`;
-
-    return {
-      id,
-      path,
-      pollInterval,
-      debounceMs,
-      activeHigh,
-      state: null,
-      pending: null
-    };
-  }
-
-  private startAlarmMonitoring(channel: AlarmInputChannel) {
-    const pollInput = () => {
-      const state = this.readAlarmInput(channel);
-      if (state === null) return;
-      this.handleAlarmSample(channel, state);
-    };
-
-    pollInput();
-    channel.pollTimer = setInterval(pollInput, channel.pollInterval);
-  }
-
-  private readAlarmInput(channel: AlarmInputChannel): boolean | null {
-    try {
-      const rawValue = fs.readFileSync(channel.path, 'utf8').trim();
-      const numericValue = parseInt(rawValue, 10);
-      const isActive = isNaN(numericValue) ? rawValue === 'true' : numericValue !== 0;
-      return channel.activeHigh ? isActive : !isActive;
-    } catch (err) {
-      console.log(`EventsService - Unable to read alarm input at ${channel.path}`);
-      return null;
-    }
-  }
-
-  private handleAlarmSample(channel: AlarmInputChannel, sample: boolean) {
-    if (channel.pending === sample && channel.debounceTimer) return;
-
-    if (channel.debounceTimer) {
-      clearTimeout(channel.debounceTimer);
-    }
-
-    channel.pending = sample;
-    channel.debounceTimer = setTimeout(() => {
-      channel.debounceTimer = undefined;
-      if (channel.state === sample) return;
-      this.publishAlarmState(channel.id, sample);
-    }, channel.debounceMs);
   }
 
   private buildServiceDefinition() {
@@ -340,11 +238,11 @@ class EventsService extends SoapService {
 
   private cleanupExpiredSubscriptions() {
     const now = Date.now();
-    for (const [id, subscription] of this.subscriptions.entries()) {
+    this.subscriptions.forEach((subscription, id) => {
       if (subscription.terminationTime.getTime() < now) {
         this.subscriptions.delete(id);
       }
-    }
+    });
   }
 
   private enqueueInitialState(id: string, message: NotificationMessage) {
@@ -355,9 +253,9 @@ class EventsService extends SoapService {
 
   private broadcastNotification(message: NotificationMessage) {
     this.cleanupExpiredSubscriptions();
-    for (const subscription of this.subscriptions.values()) {
+    this.subscriptions.forEach((subscription) => {
       subscription.queue.push(message);
-    }
+    });
   }
 
   private createSimpleNotification(topic: string, stateName: string, isActive: boolean, sourceId?: string): NotificationMessage {

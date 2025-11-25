@@ -32,6 +32,7 @@ import os = require('os');
 import { Utils } from "./lib/utils";
 import Camera = require("./lib/camera");
 import PTZDriver = require("./lib/PTZDriver");
+import EventDriver = require("./lib/event_driver");
 import DeviceService = require("./services/device_service");
 import MediaService = require("./services/media_service");
 import Media2Service = require("./services/media2_service");
@@ -122,6 +123,7 @@ let httpserver = http.createServer(webserver);
 httpserver.listen(config.ServicePort);
 
 let ptz_driver = new PTZDriver(config);
+let event_driver = new EventDriver(config);
 
 let recordingStore = new RecordingConfigStore(config.RecordingsStorePath);
 
@@ -132,7 +134,7 @@ let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
 let media2_service = new Media2Service(config, httpserver, recordingStore);
 let discovery_service = new DiscoveryService(config);
-let events_service = new EventsService(config, httpserver);
+let events_service = new EventsService(config, httpserver, event_driver);
 let recording_service = new RecordingService(config, httpserver, recordingStore);
 
 (<any>camera).motionStateChanged = events_service.getMotionCallback();
