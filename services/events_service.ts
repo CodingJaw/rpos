@@ -299,8 +299,12 @@ class EventsService extends SoapService {
         hostname: target.hostname,
         port: target.port || (isHttps ? 443 : 80),
         path: `${target.pathname}${target.search}`,
+        timeout: 5000,
         headers: {
-          'Content-Type': 'application/soap+xml; charset=utf-8',
+          Host: target.host,
+          'Content-Type':
+            'application/soap+xml; charset=utf-8; action="http://docs.oasis-open.org/wsn/bw-2/NotificationConsumer/Notify"',
+          SOAPAction: '"http://docs.oasis-open.org/wsn/bw-2/NotificationConsumer/Notify"',
           'Content-Length': Buffer.byteLength(body)
         }
       };
@@ -310,6 +314,9 @@ class EventsService extends SoapService {
       });
       req.on('error', (err: any) => {
         utils.log.debug('Failed to notify consumer %s: %s', url, err.message);
+      });
+      req.on('timeout', () => {
+        req.destroy(new Error('timeout'));
       });
       req.write(body);
       req.end();
