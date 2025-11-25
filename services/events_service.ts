@@ -129,20 +129,22 @@ class EventsService extends SoapService {
         CurrentTime: new Date().toISOString(),
         TerminationTime: terminationTime.toISOString()
       };
-
-      if (this.motionState !== null) {
-        this.enqueueInitialState(id, this.createSimpleNotification('tns1:RuleEngine/CellMotionDetector/Motion', 'IsMotion', this.motionState));
-      }
-      this.alarmInputs
-        .filter((input) => input.state !== null)
-        .forEach((input) =>
-          this.enqueueInitialState(
-            id,
-            this.createSimpleNotification('tns1:Device/Trigger/DigitalInput', 'IsActive', !!input.state, input.id)
-          )
-        );
+      this.enqueueCurrentStates(id);
 
       return response;
+    };
+
+    port.Subscribe = (args: any) => {
+      const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
+      this.enqueueCurrentStates(id);
+      return {
+        SubscriptionReference: {
+          Address: `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/events_service/subscription/${id}`,
+          ReferenceParameters: { SubscriptionId: id }
+        },
+        CurrentTime: new Date().toISOString(),
+        TerminationTime: terminationTime.toISOString()
+      };
     };
 
     port.PullMessages = (args: any) => {
@@ -192,6 +194,23 @@ class EventsService extends SoapService {
     const terminationTime = this.calculateTermination(initialTermination);
     this.subscriptions.set(id, { id, terminationTime, queue: [] });
     return { id, terminationTime };
+  }
+
+  private enqueueCurrentStates(subscriptionId: string) {
+    if (this.motionState !== null) {
+      this.enqueueInitialState(
+        subscriptionId,
+        this.createSimpleNotification('tns1:RuleEngine/CellMotionDetector/Motion', 'IsMotion', this.motionState)
+      );
+    }
+    this.alarmInputs
+      .filter((input) => input.state !== null)
+      .forEach((input) =>
+        this.enqueueInitialState(
+          subscriptionId,
+          this.createSimpleNotification('tns1:Device/Trigger/DigitalInput', 'IsActive', !!input.state, input.id)
+        )
+      );
   }
 
   private calculateTermination(requested?: string): Date {
