@@ -122,6 +122,13 @@ class EventDriver {
       }
     }, channel.debounceMs);
   }
+
+  public simulateAlarmInput(channelId: string, isActive: boolean): boolean {
+    const channel = this.alarmInputs.find((input) => input.id === channelId);
+    if (!channel) return false;
+    this.handleAlarmSample(channel, isActive);
+    return true;
+  }
 }
 
 namespace EventDriver {

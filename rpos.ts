@@ -122,10 +122,35 @@ let webserver = express();
 let httpserver = http.createServer(webserver);
 httpserver.listen(config.ServicePort);
 
+webserver.use(express.json());
+
 let ptz_driver = new PTZDriver(config);
 let event_driver = new EventDriver(config);
 
 let recordingStore = new RecordingConfigStore(config.RecordingsStorePath);
+
+webserver.post('/api/alarm-inputs/:id', (req, res) => {
+  const channelId = req.params.id;
+  const requestedState = req.body?.active ?? req.body?.state ?? req.query?.active ?? req.query?.state;
+
+  if (requestedState === undefined) {
+    res.status(400).json({ error: 'Please provide desired state via "active" or "state".' });
+    return;
+  }
+
+  const normalizedState = typeof requestedState === 'string'
+    ? ['1', 'true', 'on', 'active'].includes(requestedState.toLowerCase())
+    : !!requestedState;
+
+  const accepted = event_driver.simulateAlarmInput(channelId, normalizedState);
+
+  if (!accepted) {
+    res.status(404).json({ error: `Alarm input ${channelId} not found.` });
+    return;
+  }
+
+  res.json({ id: channelId, active: normalizedState });
+});
 
 let camera = new Camera(config, webserver);
 let device_service = new DeviceService(config, httpserver, ptz_driver.process_ptz_command);
