@@ -320,7 +320,7 @@ class EventsService extends SoapService {
 
   private buildNotifyEnvelope(subscriptionId: string, consumerUrl: string, messages: NotificationMessage[]): string {
     const messageXml = messages.map((msg) => this.notificationMessageToXml(msg)).join('');
-    const messageId = `uuid:${crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex')}`;
+    const messageId = `uuid:${crypto.randomBytes(16).toString('hex')}`;
     const serviceUrl = this.config.ServiceUrl || `http://${utils.getIpAddress()}:${this.config.ServicePort}`;
 
     return [
