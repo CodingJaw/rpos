@@ -3,6 +3,7 @@ interface rposConfig {
   NetworkAdapters: string[];
   IpAddress: string;
   ServicePort: number;
+  ServiceUrl?: string;
   Username: string;
   Password: string;
   CameraType: string;

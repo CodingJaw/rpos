@@ -78,6 +78,8 @@
       <xsd:element name="UnsubscribeResponse" type="xsd:anyType"/>
       <xsd:element name="SetSynchronizationPoint" type="xsd:anyType"/>
       <xsd:element name="SetSynchronizationPointResponse" type="xsd:anyType"/>
+      <xsd:element name="Subscribe" type="xsd:anyType"/>
+      <xsd:element name="SubscribeResponse" type="xsd:anyType"/>
     </xsd:schema>
   </types>
   <message name="GetServiceCapabilitiesRequest">
@@ -122,6 +124,12 @@
   <message name="SetSynchronizationPointResponse">
     <part name="parameters" element="tev:SetSynchronizationPointResponse"/>
   </message>
+  <message name="SubscribeRequest">
+    <part name="parameters" element="tev:Subscribe"/>
+  </message>
+  <message name="SubscribeResponse">
+    <part name="parameters" element="tev:SubscribeResponse"/>
+  </message>
   <portType name="EventsPort">
     <operation name="GetServiceCapabilities">
       <input message="tev:GetServiceCapabilitiesRequest"/>
@@ -150,6 +158,10 @@
     <operation name="SetSynchronizationPoint">
       <input message="tev:SetSynchronizationPointRequest"/>
       <output message="tev:SetSynchronizationPointResponse"/>
+    </operation>
+    <operation name="Subscribe">
+      <input message="tev:SubscribeRequest"/>
+      <output message="tev:SubscribeResponse"/>
     </operation>
   </portType>
   <binding name="EventsBinding" type="tev:EventsPort">
@@ -186,6 +198,11 @@
     </operation>
     <operation name="SetSynchronizationPoint">
       <soap:operation soapAction="http://www.onvif.org/ver10/events/wsdl/SetSynchronizationPoint"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="Subscribe">
+      <soap:operation soapAction="http://docs.oasis-open.org/wsn/b-2/NotificationProducer/SubscribeRequest"/>
       <input><soap:body use="literal"/></input>
       <output><soap:body use="literal"/></output>
     </operation>

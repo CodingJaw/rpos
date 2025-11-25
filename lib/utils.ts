@@ -199,6 +199,16 @@ export module Utils {
         process.exit(99);
       });
     }
+
+    static xmlEncode(value: string): string {
+      if (value === undefined || value === null) return '';
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
     
     static uuid5(str: string) {
       var out = crypto.createHash("sha1").update(str).digest();

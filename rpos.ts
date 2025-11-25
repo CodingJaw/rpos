@@ -32,6 +32,7 @@ import os = require('os');
 import { Utils } from "./lib/utils";
 import Camera = require("./lib/camera");
 import PTZDriver = require("./lib/PTZDriver");
+import EventDriver = require("./lib/event_driver");
 import DeviceService = require("./services/device_service");
 import MediaService = require("./services/media_service");
 import Media2Service = require("./services/media2_service");
@@ -121,9 +122,35 @@ let webserver = express();
 let httpserver = http.createServer(webserver);
 httpserver.listen(config.ServicePort);
 
+webserver.use(express.json());
+
 let ptz_driver = new PTZDriver(config);
+let event_driver = new EventDriver(config);
 
 let recordingStore = new RecordingConfigStore(config.RecordingsStorePath);
+
+webserver.post('/api/alarm-inputs/:id', (req, res) => {
+  const channelId = req.params.id;
+  const requestedState = req.body?.active ?? req.body?.state ?? req.query?.active ?? req.query?.state;
+
+  if (requestedState === undefined) {
+    res.status(400).json({ error: 'Please provide desired state via "active" or "state".' });
+    return;
+  }
+
+  const normalizedState = typeof requestedState === 'string'
+    ? ['1', 'true', 'on', 'active'].includes(requestedState.toLowerCase())
+    : !!requestedState;
+
+  const accepted = event_driver.simulateAlarmInput(channelId, normalizedState);
+
+  if (!accepted) {
+    res.status(404).json({ error: `Alarm input ${channelId} not found.` });
+    return;
+  }
+
+  res.json({ id: channelId, active: normalizedState });
+});
 
 let camera = new Camera(config, webserver);
 let device_service = new DeviceService(config, httpserver, ptz_driver.process_ptz_command);
@@ -132,11 +159,10 @@ let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
 let media2_service = new Media2Service(config, httpserver, recordingStore);
 let discovery_service = new DiscoveryService(config);
-let events_service = new EventsService(config, httpserver);
+let events_service = new EventsService(config, httpserver, event_driver);
 let recording_service = new RecordingService(config, httpserver, recordingStore);
 
 (<any>camera).motionStateChanged = events_service.getMotionCallback();
-(<any>ptz_driver).alarmStateChanged = events_service.getAlarmCallback();
 
 device_service.start();
 media_service.start();

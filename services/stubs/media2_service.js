@@ -952,8 +952,8 @@ exports.Media2Service = {
               //token : {tt:ReferenceToken}
             //}
           //
-            //VideoSourceConfigurationToken : { 
-xs:string
+            //VideoSourceConfigurationToken : {
+//xs:string
             //},
             //Type : { xs:string},
             //Position : { 
@@ -1074,8 +1074,8 @@ xs:string
             //token : {tt:ReferenceToken}
           //}
         //
-          //VideoSourceConfigurationToken : { 
-xs:string
+          //VideoSourceConfigurationToken : {
+//xs:string
           //},
           //Type : { xs:string},
           //Position : { 
@@ -1142,8 +1142,8 @@ xs:string
             //token : {tt:ReferenceToken}
           //}
         //
-          //VideoSourceConfigurationToken : { 
-xs:string
+          //VideoSourceConfigurationToken : {
+//xs:string
           //},
           //Type : { xs:string},
           //Position : { 
