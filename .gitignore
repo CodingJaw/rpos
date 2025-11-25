@@ -158,6 +158,8 @@ AppPackages/
 
 # Others
 *.[Cc]ache
+test/*.js
+test/*.js.map
 ClientBin/
 [Ss]tyle[Cc]op.*
 ~$*
