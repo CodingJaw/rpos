@@ -13,6 +13,9 @@ type EventMessage = {
   dataItems?: SimpleItem[];
 };
 
+const DIGITAL_INPUT_COUNT = 4;
+const RELAY_OUTPUT_COUNT = 4;
+
 const SOAP_NAMESPACES = [
   'xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope"',
   'xmlns:SOAP-ENC="http://www.w3.org/2003/05/soap-encoding"',
@@ -101,9 +104,13 @@ class EventsService {
     });
 
     this.app.post('/internal/input/:id/active', (req, res) => {
-      const inputId = req.params.id || '1';
+      const inputId = parseInt(req.params.id || '1', 10);
+      if (!this.isValidInput(inputId)) {
+        res.status(400).json({ status: 'error', message: `Input ${req.params.id} out of range` });
+        return;
+      }
       this.enqueueEvent('tns1:Device/Trigger/DigitalInput', [
-        { Name: 'InputToken', Value: inputId }
+        { Name: 'InputToken', Value: `${inputId}` }
       ], [
         { Name: 'LogicalState', Value: true }
       ]);
@@ -111,9 +118,13 @@ class EventsService {
     });
 
     this.app.post('/internal/relay/:id/on', (req, res) => {
-      const relayId = req.params.id || '1';
+      const relayId = parseInt(req.params.id || '1', 10);
+      if (!this.isValidRelay(relayId)) {
+        res.status(400).json({ status: 'error', message: `Relay ${req.params.id} out of range` });
+        return;
+      }
       this.enqueueEvent('tns1:Device/Relay', [
-        { Name: 'RelayToken', Value: relayId }
+        { Name: 'RelayToken', Value: `${relayId}` }
       ], [
         { Name: 'LogicalState', Value: true }
       ]);
@@ -230,6 +241,14 @@ ${notifications}
     const messages = this.queue.slice();
     this.queue = [];
     return messages;
+  }
+
+  private isValidInput(inputId: number) {
+    return Number.isInteger(inputId) && inputId >= 1 && inputId <= DIGITAL_INPUT_COUNT;
+  }
+
+  private isValidRelay(relayId: number) {
+    return Number.isInteger(relayId) && relayId >= 1 && relayId <= RELAY_OUTPUT_COUNT;
   }
 }
 

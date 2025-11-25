@@ -172,8 +172,8 @@ class DeviceService extends SoapService {
             }
           },
           IO: {
-            InputConnectors: 0,
-            RelayOutputs: 1,
+            InputConnectors: 4,
+            RelayOutputs: 4,
             Extension: {
               Auxiliary: false,
               AuxiliaryCommands: "",
@@ -464,16 +464,15 @@ class DeviceService extends SoapService {
 
     port.GetRelayOutputs = (args /*, cb, headers*/) => {
       var GetRelayOutputsResponse = {
-        RelayOutputs: [{
+        RelayOutputs: [1, 2, 3, 4].map((index) => ({
           attributes: {
-            token: "relay1"
+            token: `relay${index}`
           },
-          Properties : {
+          Properties: {
             Mode: "Bistable",
-            // DelayTime: "",
             IdleState: "open"
           }
-        }]
+        }))
       };
       return GetRelayOutputsResponse;
     };
