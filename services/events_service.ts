@@ -4,8 +4,9 @@ import { Utils } from '../lib/utils';
 import SoapService = require('../lib/SoapService');
 import { Server } from 'http';
 import crypto = require('crypto');
+import fs = require('fs');
 import EventDriver = require('../lib/event_driver');
-import { AlarmInputChannel } from '../lib/event_driver';
+type AlarmInputChannel = EventDriver.AlarmInputChannel;
 
 const utils = Utils.utils;
 

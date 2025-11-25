@@ -1,6 +1,6 @@
 import fs = require('fs');
 
-export type AlarmInputChannel = {
+type AlarmInputChannelState = {
   id: string;
   path: string;
   pollInterval: number;
@@ -13,7 +13,7 @@ export type AlarmInputChannel = {
 };
 
 class EventDriver {
-  private alarmInputs: AlarmInputChannel[] = [];
+  private alarmInputs: AlarmInputChannelState[] = [];
   private alarmStateChanged?: (channelId: string, isActive: boolean) => void;
 
   constructor(config: rposConfig) {
@@ -28,7 +28,7 @@ class EventDriver {
     this.alarmStateChanged = callback;
   }
 
-  public getAlarmInputs(): AlarmInputChannel[] {
+  public getAlarmInputs(): AlarmInputChannelState[] {
     return this.alarmInputs;
   }
 
@@ -54,10 +54,10 @@ class EventDriver {
     this.alarmInputs = inputs
       .slice(0, 4)
       .map((input, index) => this.normalizeAlarmInputConfig(input, index))
-      .filter((entry): entry is AlarmInputChannel => !!entry);
+      .filter((entry): entry is AlarmInputChannelState => !!entry);
   }
 
-  private normalizeAlarmInputConfig(rawInput: any, index: number): AlarmInputChannel | null {
+  private normalizeAlarmInputConfig(rawInput: any, index: number): AlarmInputChannelState | null {
     const path = rawInput?.Path
       ? rawInput.Path
       : rawInput?.Pin !== undefined && rawInput?.Pin !== null
@@ -82,7 +82,7 @@ class EventDriver {
     };
   }
 
-  private startAlarmMonitoring(channel: AlarmInputChannel) {
+  private startAlarmMonitoring(channel: AlarmInputChannelState) {
     const pollInput = () => {
       const state = this.readAlarmInput(channel);
       if (state === null) return;
@@ -93,7 +93,7 @@ class EventDriver {
     channel.pollTimer = setInterval(pollInput, channel.pollInterval);
   }
 
-  private readAlarmInput(channel: AlarmInputChannel): boolean | null {
+  private readAlarmInput(channel: AlarmInputChannelState): boolean | null {
     try {
       const rawValue = fs.readFileSync(channel.path, 'utf8').trim();
       const numericValue = parseInt(rawValue, 10);
@@ -105,7 +105,7 @@ class EventDriver {
     }
   }
 
-  private handleAlarmSample(channel: AlarmInputChannel, sample: boolean) {
+  private handleAlarmSample(channel: AlarmInputChannelState, sample: boolean) {
     if (channel.pending === sample && channel.debounceTimer) return;
 
     if (channel.debounceTimer) {
@@ -122,6 +122,10 @@ class EventDriver {
       }
     }, channel.debounceMs);
   }
+}
+
+namespace EventDriver {
+  export type AlarmInputChannel = AlarmInputChannelState;
 }
 
 export = EventDriver;
