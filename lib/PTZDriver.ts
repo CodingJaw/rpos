@@ -186,8 +186,8 @@ class PTZDriver {
 
     // Open the OUTPUT STREAM
     if (PTZOutput === 'serial') {
-      const { SerialPort } = require('serialport');
-      this.serialPort = new SerialPort({
+      const { SerialPortStream } = require('@serialport/stream');
+      this.serialPort = new SerialPortStream({
         path: config.PTZSerialPort,
         baudRate: config.PTZSerialPortSettings.baudRate,
         parity:   config.PTZSerialPortSettings.parity,
