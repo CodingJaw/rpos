@@ -37,6 +37,8 @@ import MediaService = require("./services/media_service");
 import PTZService = require("./services/ptz_service");
 import ImagingService = require("./services/imaging_service");
 import DiscoveryService = require("./services/discovery_service");
+import EventService = require("./services/event_service");
+import { pushInputAlarmEvent } from "./services/eventing";
 
 import { exit } from "process";
 
@@ -117,6 +119,19 @@ let webserver = express();
 let httpserver = http.createServer(webserver);
 httpserver.listen(config.ServicePort);
 
+// Internal route to trigger digital input/alarm events for diagnostics or integration tests
+//   POST /internal/input/:channel/:state
+//   state = 'active' | 'inactive' | 'true' | 'false'
+webserver.post('/internal/input/:channel/:state', (req, res) => {
+  try {
+    pushInputAlarmEvent(req.params.channel, req.params.state);
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    utils.log.warn('Failed to enqueue input alarm event', err);
+    res.status(500).json({ ok: false, error: err?.message });
+  }
+});
+
 let ptz_driver = new PTZDriver(config);
 
 let camera = new Camera(config, webserver);
@@ -125,9 +140,11 @@ let ptz_service = new PTZService(config, httpserver, ptz_driver.process_ptz_comm
 let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_ptz_command);
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
 let discovery_service = new DiscoveryService(config);
+let event_service = new EventService(config, httpserver);
 
 device_service.start();
 media_service.start();
 ptz_service.start();
 imaging_service.start();
 discovery_service.start();
+event_service.start();
