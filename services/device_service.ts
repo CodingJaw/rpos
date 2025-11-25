@@ -12,12 +12,17 @@ var utils = Utils.utils;
 class DeviceService extends SoapService {
   device_service: any;
   callback: any;
+  private inputConnectorCount: number;
+  private relayOutputCount: number;
 
   constructor(config: rposConfig, server: Server, callback) {
     super(config, server);
 
     this.device_service = require('./stubs/device_service.js').DeviceService;
     this.callback = callback;
+
+    this.inputConnectorCount = this.resolveInputConnectorCount(config);
+    this.relayOutputCount = this.resolveRelayOutputCount(config);
 
     this.serviceOptions = {
       path: '/onvif/device_service',
@@ -196,8 +201,8 @@ class DeviceService extends SoapService {
             }
           },
           IO: {
-            InputConnectors: 0,
-            RelayOutputs: 1,
+            InputConnectors: this.inputConnectorCount,
+            RelayOutputs: this.relayOutputCount,
             Extension: {
               Auxiliary: false,
               AuxiliaryCommands: "",
@@ -516,23 +521,24 @@ class DeviceService extends SoapService {
 
     port.GetRelayOutputs = (args /*, cb, headers*/) => {
       var GetRelayOutputsResponse = {
-        RelayOutputs: [{
+        RelayOutputs: this.getRelayTokens().map((token) => ({
           attributes: {
-            token: "relay1"
+            token: token
           },
           Properties : {
             Mode: "Bistable",
             // DelayTime: "",
             IdleState: "open"
           }
-        }]
+        }))
       };
       return GetRelayOutputsResponse;
     };
 
     port.SetRelayOutputState = (args /*, cb, headers*/) => {
       var SetRelayOutputStateResponse = {};
-      if (this.callback) {
+      const token = args?.RelayOutputToken;
+      if (this.callback && (!token || this.getRelayTokens().includes(token))) {
         if (args.LogicalState === 'active') this.callback('relayactive', { name: args.RelayOutputToken });
         if (args.LogicalState === 'inactive') this.callback('relayinactive', { name: args.RelayOutputToken });
       }
@@ -551,6 +557,46 @@ class DeviceService extends SoapService {
     }
 
 
+  }
+
+  private resolveInputConnectorCount(config: rposConfig): number {
+    const configuredCount = (<any>config).InputConnectors;
+    if (typeof configuredCount === 'number') {
+      return Math.max(0, Math.min(4, configuredCount));
+    }
+
+    const alarmInputs = (<any>config).AlarmInputs;
+    if (Array.isArray(alarmInputs) && alarmInputs.length > 0) {
+      return Math.min(4, alarmInputs.length);
+    }
+
+    const legacyConfigured = (<any>config).AlarmInputPath || ((<any>config).AlarmInputPin !== undefined && (<any>config).AlarmInputPin !== null);
+    if (legacyConfigured) {
+      return 1;
+    }
+
+    return 4;
+  }
+
+  private resolveRelayOutputCount(config: rposConfig): number {
+    const relayOutputs = (<any>config).RelayOutputs;
+    if (Array.isArray(relayOutputs)) {
+      return Math.min(4, relayOutputs.length || 0);
+    }
+    if (typeof relayOutputs === 'number') {
+      return Math.max(0, Math.min(4, relayOutputs));
+    }
+
+    const relayOutputCount = (<any>config).RelayOutputCount;
+    if (typeof relayOutputCount === 'number') {
+      return Math.max(0, Math.min(4, relayOutputCount));
+    }
+
+    return 4;
+  }
+
+  private getRelayTokens(): string[] {
+    return Array.from({ length: this.relayOutputCount }, (_, index) => `relay${index + 1}`);
   }
 }
 export = DeviceService;

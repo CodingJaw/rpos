@@ -20,18 +20,23 @@ type PullPointSubscription = {
   queue: NotificationMessage[];
 };
 
+type AlarmInputChannel = {
+  id: string;
+  path: string;
+  pollInterval: number;
+  debounceMs: number;
+  activeHigh: boolean;
+  state: boolean | null;
+  pending: boolean | null;
+  pollTimer?: NodeJS.Timeout;
+  debounceTimer?: NodeJS.Timeout;
+};
+
 class EventsService extends SoapService {
   private subscriptions: Map<string, PullPointSubscription> = new Map();
   private defaultTerminationSeconds = 15 * 60; // 15 minutes
   private motionState: boolean | null = null;
-  private alarmState: boolean | null = null;
-  private alarmInputPath?: string;
-  private alarmInputPollInterval: number = 200;
-  private alarmInputDebounceMs: number = 200;
-  private alarmInputActiveHigh: boolean = true;
-  private pendingAlarmState: boolean | null = null;
-  private alarmPollTimer?: NodeJS.Timeout;
-  private alarmDebounceTimer?: NodeJS.Timeout;
+  private alarmInputs: AlarmInputChannel[] = [];
 
   constructor(config: rposConfig, server: Server) {
     super(config, server);
@@ -44,7 +49,7 @@ class EventsService extends SoapService {
       onReady: () => utils.log.info('events_service started')
     };
 
-    this.configureAlarmInput(config);
+    this.configureAlarmInputs(config);
   }
 
   public publishMotionState(isActive: boolean) {
@@ -57,13 +62,15 @@ class EventsService extends SoapService {
     ));
   }
 
-  public publishAlarmState(isActive: boolean) {
-    if (this.alarmState === isActive) return;
-    this.alarmState = isActive;
+  public publishAlarmState(channelId: string, isActive: boolean) {
+    const channel = this.alarmInputs.find((input) => input.id === channelId);
+    if (!channel || channel.state === isActive) return;
+    channel.state = isActive;
     this.broadcastNotification(this.createSimpleNotification(
       'tns1:Device/Trigger/DigitalInput',
       'IsActive',
-      isActive
+      isActive,
+      channelId
     ));
   }
 
@@ -72,77 +79,100 @@ class EventsService extends SoapService {
   }
 
   public getAlarmCallback(): (state: boolean) => void {
-    return (state: boolean) => this.publishAlarmState(state);
+    return (state: boolean) => {
+      if (this.alarmInputs.length === 0) return;
+      this.publishAlarmState(this.alarmInputs[0].id, state);
+    };
   }
 
-  private configureAlarmInput(config: rposConfig) {
-    const alarmInputPath = (<any>config).AlarmInputPath;
-    const alarmInputPin = (<any>config).AlarmInputPin;
-    const alarmInputPollInterval = (<any>config).AlarmInputPollInterval;
-    const alarmInputDebounceMs = (<any>config).AlarmInputDebounceMs;
-    const alarmInputActiveHigh = (<any>config).AlarmInputActiveHigh;
+  private configureAlarmInputs(config: rposConfig) {
+    const configured = (<any>config).AlarmInputs;
+    const inputs = Array.isArray(configured) ? configured : [];
 
-    if (alarmInputPath) {
-      this.alarmInputPath = alarmInputPath;
-    } else if (alarmInputPin !== undefined && alarmInputPin !== null) {
-      this.alarmInputPath = `/sys/class/gpio/gpio${alarmInputPin}/value`;
-    }
+    if (inputs.length === 0) {
+      const alarmInputPath = (<any>config).AlarmInputPath;
+      const alarmInputPin = (<any>config).AlarmInputPin;
 
-    if (!this.alarmInputPath) {
-      return;
-    }
-
-    if (typeof alarmInputPollInterval === 'number') {
-      this.alarmInputPollInterval = alarmInputPollInterval;
-    }
-    if (typeof alarmInputDebounceMs === 'number') {
-      this.alarmInputDebounceMs = alarmInputDebounceMs;
-    }
-    if (typeof alarmInputActiveHigh === 'boolean') {
-      this.alarmInputActiveHigh = alarmInputActiveHigh;
+      if (alarmInputPath || alarmInputPin !== undefined && alarmInputPin !== null) {
+        inputs.push({
+          Path: alarmInputPath,
+          Pin: alarmInputPin,
+          PollInterval: (<any>config).AlarmInputPollInterval,
+          DebounceMs: (<any>config).AlarmInputDebounceMs,
+          ActiveHigh: (<any>config).AlarmInputActiveHigh
+        });
+      }
     }
 
-    this.startAlarmMonitoring();
+    this.alarmInputs = inputs
+      .slice(0, 4)
+      .map((input, index) => this.normalizeAlarmInputConfig(input, index))
+      .filter((entry): entry is AlarmInputChannel => !!entry);
+
+    this.alarmInputs.forEach((channel) => this.startAlarmMonitoring(channel));
   }
 
-  private startAlarmMonitoring() {
+  private normalizeAlarmInputConfig(rawInput: any, index: number): AlarmInputChannel | null {
+    const path = rawInput?.Path
+      ? rawInput.Path
+      : rawInput?.Pin !== undefined && rawInput?.Pin !== null
+        ? `/sys/class/gpio/gpio${rawInput.Pin}/value`
+        : undefined;
+
+    if (!path) return null;
+
+    const pollInterval = typeof rawInput?.PollInterval === 'number' ? rawInput.PollInterval : 200;
+    const debounceMs = typeof rawInput?.DebounceMs === 'number' ? rawInput.DebounceMs : 200;
+    const activeHigh = typeof rawInput?.ActiveHigh === 'boolean' ? rawInput.ActiveHigh : true;
+    const id = rawInput?.Id || `input${index + 1}`;
+
+    return {
+      id,
+      path,
+      pollInterval,
+      debounceMs,
+      activeHigh,
+      state: null,
+      pending: null
+    };
+  }
+
+  private startAlarmMonitoring(channel: AlarmInputChannel) {
     const pollInput = () => {
-      const state = this.readAlarmInput();
+      const state = this.readAlarmInput(channel);
       if (state === null) return;
-      this.handleAlarmSample(state);
+      this.handleAlarmSample(channel, state);
     };
 
     pollInput();
-    this.alarmPollTimer = setInterval(pollInput, this.alarmInputPollInterval);
+    channel.pollTimer = setInterval(pollInput, channel.pollInterval);
   }
 
-  private readAlarmInput(): boolean | null {
-    if (!this.alarmInputPath) return null;
-
+  private readAlarmInput(channel: AlarmInputChannel): boolean | null {
     try {
-      const rawValue = fs.readFileSync(this.alarmInputPath, 'utf8').trim();
+      const rawValue = fs.readFileSync(channel.path, 'utf8').trim();
       const numericValue = parseInt(rawValue, 10);
       const isActive = isNaN(numericValue) ? rawValue === 'true' : numericValue !== 0;
-      return this.alarmInputActiveHigh ? isActive : !isActive;
+      return channel.activeHigh ? isActive : !isActive;
     } catch (err) {
-      console.log(`EventsService - Unable to read alarm input at ${this.alarmInputPath}`);
+      console.log(`EventsService - Unable to read alarm input at ${channel.path}`);
       return null;
     }
   }
 
-  private handleAlarmSample(sample: boolean) {
-    if (this.pendingAlarmState === sample && this.alarmDebounceTimer) return;
+  private handleAlarmSample(channel: AlarmInputChannel, sample: boolean) {
+    if (channel.pending === sample && channel.debounceTimer) return;
 
-    if (this.alarmDebounceTimer) {
-      clearTimeout(this.alarmDebounceTimer);
+    if (channel.debounceTimer) {
+      clearTimeout(channel.debounceTimer);
     }
 
-    this.pendingAlarmState = sample;
-    this.alarmDebounceTimer = setTimeout(() => {
-      this.alarmDebounceTimer = undefined;
-      if (this.alarmState === sample) return;
-      this.publishAlarmState(sample);
-    }, this.alarmInputDebounceMs);
+    channel.pending = sample;
+    channel.debounceTimer = setTimeout(() => {
+      channel.debounceTimer = undefined;
+      if (channel.state === sample) return;
+      this.publishAlarmState(channel.id, sample);
+    }, channel.debounceMs);
   }
 
   private buildServiceDefinition() {
@@ -204,9 +234,14 @@ class EventsService extends SoapService {
       if (this.motionState !== null) {
         this.enqueueInitialState(id, this.createSimpleNotification('tns1:RuleEngine/CellMotionDetector/Motion', 'IsMotion', this.motionState));
       }
-      if (this.alarmState !== null) {
-        this.enqueueInitialState(id, this.createSimpleNotification('tns1:Device/Trigger/DigitalInput', 'IsActive', this.alarmState));
-      }
+      this.alarmInputs
+        .filter((input) => input.state !== null)
+        .forEach((input) =>
+          this.enqueueInitialState(
+            id,
+            this.createSimpleNotification('tns1:Device/Trigger/DigitalInput', 'IsActive', !!input.state, input.id)
+          )
+        );
 
       return response;
     };
@@ -325,8 +360,18 @@ class EventsService extends SoapService {
     }
   }
 
-  private createSimpleNotification(topic: string, stateName: string, isActive: boolean): NotificationMessage {
+  private createSimpleNotification(topic: string, stateName: string, isActive: boolean, sourceId?: string): NotificationMessage {
     const now = new Date().toISOString();
+    const source = sourceId
+      ? {
+          SimpleItem: {
+            attributes: {
+              Name: 'InputToken',
+              Value: sourceId
+            }
+          }
+        }
+      : {};
     return {
       Topic: {
         attributes: {
@@ -340,7 +385,7 @@ class EventsService extends SoapService {
             UtcTime: now,
             PropertyOperation: 'Changed'
           },
-          Source: {},
+          Source: source,
           Data: {
             SimpleItem: {
               attributes: {
