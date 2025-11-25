@@ -6,12 +6,132 @@ import { Utils } from '../lib/utils';
 import { Server } from 'http';
 import {
   SUBSCRIPTION_DEFAULT_TTL_MS,
-  createSubscription,
+  createSubscriptionWithExpiration,
   getSubscription,
   purgeExpiredSubscriptions,
 } from './eventing';
 
 var utils = Utils.utils;
+
+const ONVIF_ERROR_NS = 'http://www.onvif.org/ver10/error';
+const PULL_DELIVERY_HINT = 'pull';
+
+function createOnvifFault(subcode: string, reason: string) {
+  return {
+    Fault: {
+      attributes: {
+        'xmlns:ter': ONVIF_ERROR_NS,
+      },
+      Code: {
+        Value: 'soap:Sender',
+        Subcode: {
+          Value: subcode,
+        },
+      },
+      Reason: {
+        Text: {
+          attributes: {
+            'xml:lang': 'en',
+          },
+          $value: reason,
+        },
+      },
+    },
+  };
+}
+
+function parseDurationMs(duration: string): number | undefined {
+  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/i.exec(duration);
+  if (!match) {
+    return undefined;
+  }
+
+  const days = parseFloat(match[1] || '0');
+  const hours = parseFloat(match[2] || '0');
+  const minutes = parseFloat(match[3] || '0');
+  const seconds = parseFloat(match[4] || '0');
+
+  return (
+    days * 24 * 60 * 60 * 1000 +
+    hours * 60 * 60 * 1000 +
+    minutes * 60 * 1000 +
+    seconds * 1000
+  );
+}
+
+function extractText(value: any): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  return value._ ?? value.$value ?? value['#'] ?? value.toString?.();
+}
+
+function resolveExpiration(requestedTermination: any): number {
+  const now = Date.now();
+  const defaultExpiration = now + SUBSCRIPTION_DEFAULT_TTL_MS;
+
+  const rawValue = extractText(requestedTermination);
+  if (!rawValue) {
+    return defaultExpiration;
+  }
+
+  const parsedDate = Date.parse(rawValue);
+  if (!isNaN(parsedDate)) {
+    if (parsedDate <= now) {
+      throw createOnvifFault('ter:InvalidArgVal', 'InitialTerminationTime must be in the future');
+    }
+    return parsedDate;
+  }
+
+  const durationMs = parseDurationMs(rawValue);
+  if (durationMs !== undefined) {
+    if (durationMs <= 0) {
+      throw createOnvifFault('ter:InvalidArgVal', 'InitialTerminationTime duration must be greater than zero');
+    }
+    return now + durationMs;
+  }
+
+  throw createOnvifFault('ter:InvalidArgVal', 'InitialTerminationTime is not a valid dateTime or duration');
+}
+
+function extractAddress(consumerReference: any): string | undefined {
+  return (
+    extractText(consumerReference?.Address) ||
+    extractText(consumerReference?.['wsa5:Address']) ||
+    extractText(consumerReference)
+  );
+}
+
+function extractDeliveryMode(delivery: any): string | undefined {
+  if (!delivery) {
+    return undefined;
+  }
+
+  const attributes = delivery.$ || delivery.attributes;
+  return extractText(delivery.Mode) || extractText(attributes?.Mode) || extractText(delivery);
+}
+
+function assertPullDeliverySupported(args: any) {
+  const deliveryMode = extractDeliveryMode(args?.Delivery);
+  if (deliveryMode && !deliveryMode.toLowerCase().includes(PULL_DELIVERY_HINT)) {
+    throw createOnvifFault('ter:ActionNotSupported', 'Only PullPoint delivery is supported');
+  }
+
+  const consumerAddress = extractAddress(args?.ConsumerReference);
+  if (consumerAddress && !consumerAddress.toLowerCase().includes(PULL_DELIVERY_HINT)) {
+    throw createOnvifFault('ter:ActionNotSupported', 'Only PullPoint delivery is supported');
+  }
+}
+
+function createSubscriptionForExpiration(expiration: number) {
+  const adjustedExpiration = Math.max(expiration, Date.now() + 1);
+  return createSubscriptionWithExpiration(adjustedExpiration);
+}
 
 class EventService extends SoapService {
   event_service: any;
@@ -37,7 +157,8 @@ class EventService extends SoapService {
     var port = this.event_service.EventService.EventPort;
 
     port.CreatePullPointSubscription = (args: any) => {
-      const { id, expiresAt } = createSubscription(SUBSCRIPTION_DEFAULT_TTL_MS);
+      const expiration = resolveExpiration(args?.InitialTerminationTime);
+      const { id, expiresAt } = createSubscriptionForExpiration(expiration);
 
       return {
         SubscriptionReference: {
@@ -94,17 +215,19 @@ class EventService extends SoapService {
     };
 
     port.Subscribe = (args: any) => {
-      utils.log.info('Subscribe requested but not supported; returning fault');
-      throw {
-        Fault: {
-          Code: {
-            Value: 'soap:Sender',
-            Subcode: { value: 'wsnt:ResourceUnknown' },
-          },
-          Reason: {
-            Text: 'Subscribe is not supported; use CreatePullPointSubscription',
-          },
+      purgeExpiredSubscriptions();
+
+      assertPullDeliverySupported(args);
+
+      const expiration = resolveExpiration(args?.InitialTerminationTime);
+      const { id, expiresAt } = createSubscriptionForExpiration(expiration);
+
+      return {
+        SubscriptionReference: {
+          Address: id,
         },
+        CurrentTime: new Date().toISOString(),
+        TerminationTime: new Date(expiresAt).toISOString(),
       };
     };
   }

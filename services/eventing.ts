@@ -11,11 +11,14 @@ export type SubscriptionState = {
 
 export const activeSubscriptions = new Map<string, SubscriptionState>();
 
-export function createSubscription(ttlMs: number = SUBSCRIPTION_DEFAULT_TTL_MS) {
+export function createSubscriptionWithExpiration(expiresAt: number) {
   const id = 'sub-' + Date.now();
-  const expiresAt = Date.now() + ttlMs;
   activeSubscriptions.set(id, { expiresAt, queue: [] });
   return { id, expiresAt };
+}
+
+export function createSubscription(ttlMs: number = SUBSCRIPTION_DEFAULT_TTL_MS) {
+  return createSubscriptionWithExpiration(Date.now() + ttlMs);
 }
 
 export function getSubscription(id: string | undefined) {
