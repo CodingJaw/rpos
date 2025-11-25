@@ -103,6 +103,21 @@ class EventsService {
       res.json({ status: 'ok', event: 'motion', active });
     });
 
+    this.app.post('/internal/input/:id', express.json(), (req, res) => {
+      const inputId = parseInt(req.params.id || '1', 10);
+      const active = req.body && req.body.active !== undefined ? !!req.body.active : true;
+      if (!this.isValidInput(inputId)) {
+        res.status(400).json({ status: 'error', message: `Input ${req.params.id} out of range` });
+        return;
+      }
+      this.enqueueEvent('tns1:Device/Trigger/DigitalInput', [
+        { Name: 'InputToken', Value: `${inputId}` }
+      ], [
+        { Name: 'LogicalState', Value: active }
+      ]);
+      res.json({ status: 'ok', event: 'input', input: inputId, active });
+    });
+
     this.app.post('/internal/input/:id/active', (req, res) => {
       const inputId = parseInt(req.params.id || '1', 10);
       if (!this.isValidInput(inputId)) {
