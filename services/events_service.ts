@@ -95,6 +95,12 @@ class EventsService {
       (req, res) => this.handleSoapRequest(req.body || '', res)
     );
 
+    this.app.post(
+      this.subscriptionPath,
+      express.text({ type: ['application/soap+xml', 'text/xml', '*/*'] }),
+      (req, res) => this.handleSoapRequest(req.body || '', res)
+    );
+
     this.app.post('/internal/motion', express.json(), (req, res) => {
       const active = req.body && req.body.active !== undefined ? !!req.body.active : true;
       this.enqueueEvent('tns1:VideoSource/MotionAlarm', [], [
