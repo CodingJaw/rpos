@@ -1,0 +1,152 @@
+name: "Validate ONVIF Profile S Compliance"
+
+on: [push, pull_request]
+
+jobs:
+  profile-s-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install GStreamer and GI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gstreamer1.0-tools \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad \
+            gstreamer1.0-plugins-ugly \
+            gstreamer1.0-libav \
+            gir1.2-gstreamer-1.0 \
+            gir1.2-gst-rtsp-server-1.0 \
+            python3-gi
+
+      - name: Install project dependencies
+        run: |
+          npm ci
+          npm install onvif --no-save
+          pip install onvif_zeep wsdiscovery
+
+      - name: Prepare ONVIF test configuration
+        run: cp rposConfig.profile-s.json rposConfig.json
+
+      - name: Start ONVIF server if required
+        run: |
+          node rpos.js --config rposConfig.profile-s.json > rpos.log 2>&1 &
+          sleep 5
+
+      - name: Check basic DeviceService compliance: GetDeviceInformation
+        run: |
+          npx ts-node <<'EOF'
+          import { Cam } from 'onvif';
+          new Cam({ hostname: '127.0.0.1', port: 8080 }, function(err) {
+            if (err) throw err;
+            this.getDeviceInformation((err, info) => {
+              if (err) throw err;
+              console.log("Device Info OK:", info);
+            });
+          });
+          EOF
+
+      - name: Check DeviceService: GetCapabilities
+        run: |
+          npx ts-node <<'EOF'
+          import { Cam } from 'onvif';
+          new Cam({ hostname: '127.0.0.1', port: 8080 }, function(err) {
+            if (err) throw err;
+            this.getCapabilities((err, caps) => {
+              if (err) throw err;
+              if (!caps || !caps.media || !caps.events)
+                throw new Error("Missing required ONVIF capabilities.");
+              console.log("Capabilities OK:", caps);
+            });
+          });
+          EOF
+
+      - name: Check MediaService: GetProfiles and GetStreamUri
+        run: |
+          npx ts-node <<'EOF'
+          import { Cam } from 'onvif';
+          new Cam({ hostname: '127.0.0.1', port: 8080 }, function(err) {
+            if (err) throw err;
+            this.getProfiles((err, profiles) => {
+              if (err || profiles.length === 0) throw new Error("No media profiles available.");
+              const token = profiles[0].$token;
+              this.getStreamUri({ protocol: 'RTSP', profileToken: token }, (err, uri) => {
+                if (err) throw err;
+                if (!uri || !uri.uri) throw new Error("Invalid RTSP URI.");
+                console.log("RTSP URI OK:", uri.uri);
+              });
+            });
+          });
+          EOF
+
+      - name: Check EventService: GetEventProperties
+        run: |
+          npx ts-node <<'EOF'
+          import { Cam } from 'onvif';
+          new Cam({ hostname: '127.0.0.1', port: 8080 }, function(err) {
+            if (err) throw err;
+            this.getEventProperties((err, props) => {
+              if (err) throw err;
+              if (!props.topicSet) throw new Error("Event TopicSet missing.");
+              console.log("Event TopicSet OK");
+            });
+          });
+          EOF
+
+      - name: Validate PullPoint: CreatePullPointSubscription
+        run: |
+          npx ts-node <<'EOF'
+          import { Cam } from 'onvif';
+          new Cam({ hostname: '127.0.0.1', port: 8080 }, function(err) {
+            if (err) throw err;
+            this.createPullPointSubscription((err, sub) => {
+              if (err) throw err;
+              if (!sub || !sub.subscriptionReference)
+                throw new Error("PullPoint subscription failed.");
+              console.log("PullPoint subscription OK:", sub.subscriptionReference.Address);
+            });
+          });
+          EOF
+
+      - name: Validate PullMessages returns SOAP correctly
+        run: |
+          python3 <<'EOF'
+          from onvif import ONVIFCamera
+          cam = ONVIFCamera('127.0.0.1', 8080, '', '')
+          events = cam.create_events_service()
+          pullpoint = events.CreatePullPointSubscription()
+          msg = events.PullMessages({'Timeout': 'PT5S', 'MessageLimit': 10})
+          print("PullMessages OK:", msg)
+          EOF
+
+      - name: Validate WS-Discovery responsiveness
+        run: |
+          python3 <<'EOF'
+          from wsdiscovery import WSDiscovery
+          from wsdiscovery import QName
+          w = WSDiscovery()
+          w.start()
+          services = w.searchServices()
+          w.stop()
+          if not services:
+            raise Exception("WS-Discovery returned no ONVIF devices.")
+          print("WS-Discovery OK: Found", len(services), "devices.")
+          EOF
+
+      - name: Final Output
+        run: echo "ONVIF compliance check completed. DeviceService, MediaService, EventService, PullPoint, RTSP, and WS-Discovery are valid."

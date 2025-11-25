@@ -1,0 +1,36 @@
+{
+  "NetworkAdapters": ["eth0", "wlan0", "en0"],
+  "IpAddress": "127.0.0.1",
+  "ServicePort": 8080,
+  "Username": "",
+  "Password": "",
+  "CameraType": "testsrc",
+  "CameraDevice": "./sample_image.jpg",
+  "TestSrc": {
+    "Preset": "480p",
+    "Framerate": 15,
+    "Pattern": "image"
+  },
+  "RTSPAddress": "",
+  "RTSPPort": 8554,
+  "RTSPName": "h264",
+  "MulticastEnabled": false,
+  "RTSPMulticastName": "h264m",
+  "MulticastAddress": "224.0.0.1",
+  "MulticastPort": "10001",
+  "RTSPServer": 3,
+  "PTZDriver": "none",
+  "PTZOutput": "none",
+  "PTZSerialPort": "",
+  "PTZSerialPortSettings": { "baudRate": 2400, "dataBits": 8, "parity": "none", "stopBits": 1 },
+  "PTZOutputURL": "127.0.0.1:9999",
+  "PTZCameraAddress": 1,
+  "DeviceInformation": {
+    "Manufacturer": "RPOS Test Card",
+    "Model": "Test Card",
+    "HardwareId": ""
+  },
+  "logLevel": 3,
+  "logSoapCalls": false,
+  "AuthDebug": false
+}
