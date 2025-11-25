@@ -7,8 +7,11 @@ import { Server } from 'http';
 import {
   SUBSCRIPTION_DEFAULT_TTL_MS,
   createSubscriptionWithExpiration,
+  findSubscription,
   getSubscription,
+  isSubscriptionExpired,
   purgeExpiredSubscriptions,
+  waitForMessages,
 } from './eventing';
 
 var utils = Utils.utils;
@@ -133,6 +136,59 @@ function createSubscriptionForExpiration(expiration: number) {
   return createSubscriptionWithExpiration(adjustedExpiration);
 }
 
+function buildEndpointReference(subscriptionId: string, serviceUrl: string) {
+  return {
+    attributes: {
+      'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing',
+    },
+    'wsa5:Address': serviceUrl,
+    'wsa5:ReferenceParameters': {
+      SubscriptionId: subscriptionId,
+    },
+  };
+}
+
+function extractSubscriptionId(reference: any): string | undefined {
+  return (
+    extractText(reference?.['wsa5:ReferenceParameters']?.SubscriptionId) ||
+    extractText(reference?.ReferenceParameters?.SubscriptionId) ||
+    extractText(reference?.Address) ||
+    extractText(reference?.['wsa5:Address']) ||
+    extractText(reference)
+  );
+}
+
+function resolveTimeoutMs(rawTimeout: any) {
+  if (rawTimeout === undefined || rawTimeout === null) {
+    return 0;
+  }
+
+  const timeoutText = extractText(rawTimeout);
+  if (!timeoutText) {
+    return 0;
+  }
+
+  const timeoutMs = parseDurationMs(timeoutText);
+  if (timeoutMs === undefined || timeoutMs < 0) {
+    throw createOnvifFault('ter:InvalidArgVal', 'Timeout is not a valid duration');
+  }
+
+  return timeoutMs;
+}
+
+function resolveMessageLimit(rawLimit: any): number | undefined {
+  if (rawLimit === undefined || rawLimit === null) {
+    return undefined;
+  }
+
+  const parsed = parseInt(extractText(rawLimit) || '', 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    throw createOnvifFault('ter:InvalidArgVal', 'MessageLimit must be a positive integer');
+  }
+
+  return parsed;
+}
+
 class EventService extends SoapService {
   event_service: any;
 
@@ -155,45 +211,54 @@ class EventService extends SoapService {
 
   extendService() {
     var port = this.event_service.EventService.EventPort;
+    const serviceUrl = `http://${utils.getIpAddress()}:${this.config.ServicePort}${this.serviceOptions.path}`;
 
     port.CreatePullPointSubscription = (args: any) => {
       const expiration = resolveExpiration(args?.InitialTerminationTime);
       const { id, expiresAt } = createSubscriptionForExpiration(expiration);
 
+      const subscriptionReference = buildEndpointReference(id, serviceUrl);
+
       return {
-        SubscriptionReference: {
-          Address: id,
-        },
+        SubscriptionReference: subscriptionReference,
         CurrentTime: new Date().toISOString(),
         TerminationTime: new Date(expiresAt).toISOString(),
       };
     };
 
-    port.PullMessages = (args: any) => {
+    port.PullMessages = async (args: any) => {
       purgeExpiredSubscriptions();
 
-      const id =
-        args &&
-          args.SubscriptionReference &&
-          (args.SubscriptionReference.Address || args.SubscriptionReference.Address?.['_']) ||
-        args?.SubscriptionReference?.['_'];
-
-      const sub = getSubscription(id);
-      if (!sub) {
-        throw new Error('Subscription not found or expired');
+      const subscriptionId = extractSubscriptionId(args?.SubscriptionReference);
+      if (!subscriptionId) {
+        throw createOnvifFault('ter:InvalidArgVal', 'SubscriptionReference is required');
       }
 
-      const messageLimit = args?.MessageLimit ? parseInt(args.MessageLimit, 10) : undefined;
-      let notifications = sub.queue.splice(0, sub.queue.length);
+      const existingSubscription = findSubscription(subscriptionId);
+      if (!existingSubscription) {
+        throw createOnvifFault('ter:InvalidArgVal', 'Subscription not found');
+      }
 
-      if (messageLimit && messageLimit > 0) {
-        notifications = notifications.slice(0, messageLimit);
+      if (isSubscriptionExpired(existingSubscription)) {
+        purgeExpiredSubscriptions();
+        throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
+      }
+
+      const timeoutMs = resolveTimeoutMs(args?.Timeout);
+      const messageLimit = resolveMessageLimit(args?.MessageLimit);
+
+      const waitMs = Math.min(timeoutMs, Math.max(0, existingSubscription.expiresAt - Date.now()));
+      const notifications = await waitForMessages(subscriptionId!, waitMs, messageLimit);
+
+      const activeSubscription = getSubscription(subscriptionId);
+      if (!activeSubscription) {
+        throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
       }
 
       return {
         CurrentTime: new Date().toISOString(),
-        TerminationTime: new Date(sub.expiresAt).toISOString(),
-        NotificationMessage: notifications,
+        TerminationTime: new Date(activeSubscription.expiresAt).toISOString(),
+        NotificationMessage: notifications || [],
       };
     };
 
@@ -222,10 +287,10 @@ class EventService extends SoapService {
       const expiration = resolveExpiration(args?.InitialTerminationTime);
       const { id, expiresAt } = createSubscriptionForExpiration(expiration);
 
+      const subscriptionReference = buildEndpointReference(id, serviceUrl);
+
       return {
-        SubscriptionReference: {
-          Address: id,
-        },
+        SubscriptionReference: subscriptionReference,
         CurrentTime: new Date().toISOString(),
         TerminationTime: new Date(expiresAt).toISOString(),
       };
