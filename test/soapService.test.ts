@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import SoapService = require('../lib/SoapService');
 import { Utils } from '../lib/utils';
 
