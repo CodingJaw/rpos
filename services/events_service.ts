@@ -20,6 +20,7 @@ type PullPointSubscription = {
   id: string;
   terminationTime: Date;
   queue: NotificationMessage[];
+  consumerUrl?: string;
 };
 
 class EventsService extends SoapService {
@@ -135,7 +136,8 @@ class EventsService extends SoapService {
     };
 
     port.Subscribe = (args: any) => {
-      const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime);
+      const consumerUrl = args?.ConsumerReference?.Address;
+      const { terminationTime, id } = this.createSubscription(args?.InitialTerminationTime, consumerUrl);
       this.enqueueCurrentStates(id);
       return {
         SubscriptionReference: {
@@ -189,10 +191,10 @@ class EventsService extends SoapService {
     return service;
   }
 
-  private createSubscription(initialTermination?: string) {
+  private createSubscription(initialTermination?: string, consumerUrl?: string) {
     const id = crypto.randomBytes(8).toString('hex');
     const terminationTime = this.calculateTermination(initialTermination);
-    this.subscriptions.set(id, { id, terminationTime, queue: [] });
+    this.subscriptions.set(id, { id, terminationTime, queue: [], consumerUrl });
     return { id, terminationTime };
   }
 
@@ -269,13 +271,94 @@ class EventsService extends SoapService {
     const subscription = this.subscriptions.get(id);
     if (!subscription) return;
     subscription.queue.push(message);
+    if (subscription.consumerUrl) {
+      this.notifyConsumer(subscription.consumerUrl, [message]);
+    }
   }
 
   private broadcastNotification(message: NotificationMessage) {
     this.cleanupExpiredSubscriptions();
     this.subscriptions.forEach((subscription) => {
       subscription.queue.push(message);
+      if (subscription.consumerUrl) {
+        this.notifyConsumer(subscription.consumerUrl, [message]);
+      }
     });
+  }
+
+  private notifyConsumer(url: string, messages: NotificationMessage[]) {
+    try {
+      const target = new URL(url);
+      const body = this.buildNotifyEnvelope(messages);
+      const isHttps = target.protocol === 'https:';
+      const requestImpl = isHttps ? require('https') : require('http');
+      const options = {
+        method: 'POST',
+        hostname: target.hostname,
+        port: target.port || (isHttps ? 443 : 80),
+        path: `${target.pathname}${target.search}`,
+        headers: {
+          'Content-Type': 'application/soap+xml; charset=utf-8',
+          'Content-Length': Buffer.byteLength(body)
+        }
+      };
+
+      const req = requestImpl.request(options, (res: any) => {
+        res.on('data', () => {});
+      });
+      req.on('error', (err: any) => {
+        utils.log.debug('Failed to notify consumer %s: %s', url, err.message);
+      });
+      req.write(body);
+      req.end();
+    } catch (err) {
+      utils.log.debug('Failed to notify consumer %s: %s', url, (<any>err)?.message || err);
+    }
+  }
+
+  private buildNotifyEnvelope(messages: NotificationMessage[]): string {
+    const messageXml = messages.map((msg) => this.notificationMessageToXml(msg)).join('');
+
+    return [
+      '<?xml version="1.0" encoding="utf-8"?>',
+      '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsnt="http://docs.oasis-open.org/wsn/b-2" xmlns:tt="http://www.onvif.org/ver10/schema">',
+      '<soap:Body>',
+      '<wsnt:Notify>',
+      messageXml,
+      '</wsnt:Notify>',
+      '</soap:Body>',
+      '</soap:Envelope>'
+    ].join('');
+  }
+
+  private notificationMessageToXml(msg: NotificationMessage): string {
+    const topicDialect = msg.Topic?.attributes?.Dialect || '';
+    const topicValue = msg.Topic?.$value || '';
+    const message = (msg as any).Message?.Message || {};
+    const attributes = message.attributes || {};
+    const utcTime = attributes.UtcTime || new Date().toISOString();
+    const propertyOperation = attributes.PropertyOperation || 'Changed';
+    const sourceItem = message.Source?.SimpleItem;
+    const dataItem = message.Data?.SimpleItem;
+
+    const sourceXml = sourceItem
+      ? `<tt:SimpleItem Name="${sourceItem.attributes?.Name}" Value="${sourceItem.attributes?.Value}" />`
+      : '';
+    const dataXml = dataItem
+      ? `<tt:SimpleItem Name="${dataItem.attributes?.Name}" Value="${dataItem.attributes?.Value}" />`
+      : '';
+
+    return [
+      '<wsnt:NotificationMessage>',
+      `<wsnt:Topic Dialect="${topicDialect}">${topicValue}</wsnt:Topic>`,
+      '<wsnt:Message>',
+      `<tt:Message UtcTime="${utcTime}" PropertyOperation="${propertyOperation}">`,
+      sourceXml ? `<tt:Source>${sourceXml}</tt:Source>` : '',
+      `<tt:Data>${dataXml}</tt:Data>`,
+      '</tt:Message>',
+      '</wsnt:Message>',
+      '</wsnt:NotificationMessage>'
+    ].join('');
   }
 
   private createSimpleNotification(topic: string, stateName: string, isActive: boolean, sourceId?: string): NotificationMessage {
