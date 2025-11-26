@@ -116,6 +116,7 @@ for (var i in config.DeviceInformation) {
 }
 
 let webserver = express();
+webserver.use(express.json());
 let httpserver = http.createServer(webserver);
 httpserver.listen(config.ServicePort);
 
@@ -128,6 +129,43 @@ webserver.post('/internal/input/:channel/:state', (req, res) => {
     res.status(200).json({ ok: true });
   } catch (err) {
     utils.log.warn('Failed to enqueue input alarm event', err);
+    res.status(500).json({ ok: false, error: err?.message });
+  }
+});
+
+// Public API to trigger digital input/alarm events for integrations
+//   POST /api/inputs/:channel
+//   Body: { "state": "active" | "inactive" | "true" | "false" }
+webserver.post('/api/inputs/:channel', (req, res) => {
+  const channel = Number(req.params.channel);
+  const state = req.body?.state;
+
+  if (!Number.isInteger(channel) || channel < 1 || channel > 4) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Channel must be an integer between 1 and 4',
+    });
+  }
+
+  if (state === undefined) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Request body must include a "state" of active/inactive/true/false',
+    });
+  }
+
+  if (!['active', 'inactive', 'true', 'false', true, false].includes(state)) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Invalid state. Use active, inactive, true, or false.',
+    });
+  }
+
+  try {
+    pushInputAlarmEvent(channel, state);
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    utils.log.warn('Failed to enqueue input alarm event via API', err);
     res.status(500).json({ ok: false, error: err?.message });
   }
 });
