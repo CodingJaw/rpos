@@ -54,6 +54,27 @@ export function isSubscriptionExpired(sub: SubscriptionState | undefined) {
   return Date.now() > sub.expiresAt;
 }
 
+export function renewSubscriptionExpiration(id: string, newExpiration: number) {
+  const sub = activeSubscriptions.get(id);
+  if (!sub) {
+    return undefined;
+  }
+
+  sub.expiresAt = newExpiration;
+  return sub;
+}
+
+export function deleteSubscription(id: string) {
+  const sub = activeSubscriptions.get(id);
+  if (!sub) {
+    return false;
+  }
+
+  sub.waiters.splice(0).forEach((waiter) => waiter.resolve([]));
+  activeSubscriptions.delete(id);
+  return true;
+}
+
 function takeMessages(sub: SubscriptionState, messageLimit?: number) {
   const limit = messageLimit && messageLimit > 0 ? messageLimit : sub.queue.length;
   return sub.queue.splice(0, limit);

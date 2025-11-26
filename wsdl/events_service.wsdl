@@ -90,6 +90,20 @@
     <part name="parameters" element="wsnt:SubscribeResponse"/>
   </message>
 
+  <message name="RenewRequest">
+    <part name="parameters" element="wsnt:Renew"/>
+  </message>
+  <message name="RenewResponse">
+    <part name="parameters" element="wsnt:RenewResponse"/>
+  </message>
+
+  <message name="UnsubscribeRequest">
+    <part name="parameters" element="wsnt:Unsubscribe"/>
+  </message>
+  <message name="UnsubscribeResponse">
+    <part name="parameters" element="wsnt:UnsubscribeResponse"/>
+  </message>
+
   <portType name="EventPort">
     <operation name="CreatePullPointSubscription">
       <input message="tns:CreatePullPointSubscriptionRequest"/>
@@ -106,6 +120,14 @@
     <operation name="Subscribe">
       <input message="tns:SubscribeRequest"/>
       <output message="tns:SubscribeResponse"/>
+    </operation>
+    <operation name="Renew">
+      <input message="tns:RenewRequest"/>
+      <output message="tns:RenewResponse"/>
+    </operation>
+    <operation name="Unsubscribe">
+      <input message="tns:UnsubscribeRequest"/>
+      <output message="tns:UnsubscribeResponse"/>
     </operation>
   </portType>
 
@@ -128,6 +150,16 @@
     </operation>
     <operation name="Subscribe">
       <soap:operation soapAction="http://docs.oasis-open.org/wsn/bw-2/NotificationProducer/SubscribeRequest"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="Renew">
+      <soap:operation soapAction="http://docs.oasis-open.org/wsn/bw-2/SubscriptionManager/RenewRequest"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+    </operation>
+    <operation name="Unsubscribe">
+      <soap:operation soapAction="http://docs.oasis-open.org/wsn/bw-2/SubscriptionManager/UnsubscribeRequest"/>
       <input><soap:body use="literal"/></input>
       <output><soap:body use="literal"/></output>
     </operation>

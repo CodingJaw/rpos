@@ -24,6 +24,14 @@ exports.EventService = {
         throw NOT_IMPLEMENTED;
       },
 
+      Renew: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+      },
+
+      Unsubscribe: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+      },
+
       GetEventProperties: function (args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
       },

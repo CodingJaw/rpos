@@ -10,7 +10,9 @@ import {
   findSubscription,
   getSubscription,
   isSubscriptionExpired,
+  renewSubscriptionExpiration,
   purgeExpiredSubscriptions,
+  deleteSubscription,
   waitForMessages,
 } from './eventing';
 
@@ -162,6 +164,14 @@ function extractSubscriptionId(reference: any): string | undefined {
   );
 }
 
+function resolveSubscriptionId(args: any, headers?: any) {
+  return (
+    extractSubscriptionId(headers) ||
+    extractSubscriptionId(args?.SubscriptionReference) ||
+    extractSubscriptionId(args)
+  );
+}
+
 function resolveTimeoutMs(rawTimeout: any) {
   if (rawTimeout === undefined || rawTimeout === null) {
     return 0;
@@ -230,7 +240,7 @@ class EventService extends SoapService {
       };
     };
 
-    port.PullMessages = (args: any, callback: (result: any) => void) => {
+    port.PullMessages = (args: any, callback: (result: any) => void, headers?: any) => {
       const respond = (result: any) => {
         if (typeof callback === 'function') {
           callback(result);
@@ -241,7 +251,7 @@ class EventService extends SoapService {
       const send = async () => {
         purgeExpiredSubscriptions();
 
-        const subscriptionId = extractSubscriptionId(args?.SubscriptionReference);
+        const subscriptionId = resolveSubscriptionId(args, headers);
         if (!subscriptionId) {
           throw createOnvifFault('ter:InvalidArgVal', 'SubscriptionReference is required');
         }
@@ -271,6 +281,57 @@ class EventService extends SoapService {
           CurrentTime: new Date().toISOString(),
           TerminationTime: new Date(activeSubscription.expiresAt).toISOString(),
           NotificationMessage: notifications || [],
+        };
+      };
+
+      return send().then(respond).catch((err) => {
+        if (typeof callback === 'function') {
+          callback(err);
+          return;
+        }
+        throw err;
+      });
+    };
+
+    port.Renew = (args: any, callback: (result: any) => void, headers?: any) => {
+      const respond = (result: any) => {
+        if (typeof callback === 'function') {
+          callback(result);
+        }
+        return result;
+      };
+
+      const send = async () => {
+        purgeExpiredSubscriptions();
+
+        const subscriptionId = resolveSubscriptionId(args, headers);
+        if (!subscriptionId) {
+          throw createOnvifFault('ter:InvalidArgVal', 'SubscriptionReference is required');
+        }
+
+        const existingSubscription = findSubscription(subscriptionId);
+        if (!existingSubscription) {
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription not found');
+        }
+
+        if (isSubscriptionExpired(existingSubscription)) {
+          purgeExpiredSubscriptions();
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
+        }
+
+        const requestedExpiration = resolveExpiration(args?.TerminationTime);
+        const updated = renewSubscriptionExpiration(
+          subscriptionId,
+          Math.max(requestedExpiration, Date.now() + 1),
+        );
+
+        if (!updated) {
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription not found');
+        }
+
+        return {
+          CurrentTime: new Date().toISOString(),
+          TerminationTime: new Date(updated.expiresAt).toISOString(),
         };
       };
 
@@ -315,6 +376,45 @@ class EventService extends SoapService {
         CurrentTime: new Date().toISOString(),
         TerminationTime: new Date(expiresAt).toISOString(),
       };
+    };
+
+    port.Unsubscribe = (args: any, callback: (result: any) => void, headers?: any) => {
+      const respond = (result: any) => {
+        if (typeof callback === 'function') {
+          callback(result);
+        }
+        return result;
+      };
+
+      const send = async () => {
+        purgeExpiredSubscriptions();
+
+        const subscriptionId = resolveSubscriptionId(args, headers);
+        if (!subscriptionId) {
+          throw createOnvifFault('ter:InvalidArgVal', 'SubscriptionReference is required');
+        }
+
+        const existingSubscription = findSubscription(subscriptionId);
+        if (!existingSubscription) {
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription not found');
+        }
+
+        if (isSubscriptionExpired(existingSubscription)) {
+          purgeExpiredSubscriptions();
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
+        }
+
+        deleteSubscription(subscriptionId);
+        return {};
+      };
+
+      return send().then(respond).catch((err) => {
+        if (typeof callback === 'function') {
+          callback(err);
+          return;
+        }
+        throw err;
+      });
     };
   }
 }
