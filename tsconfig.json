@@ -6,6 +6,11 @@
         "removeComments": true,
         "preserveConstEnums": false,
         "sourceMap": true,
-        "watch": false
+        "watch": false,
+        "types": [
+            "node",
+            "jest"
+        ],
+        "typeRoots": ["./node_modules/@types"]
     }
 }

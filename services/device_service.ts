@@ -172,8 +172,8 @@ class DeviceService extends SoapService {
             }
           },
           IO: {
-            InputConnectors: 0,
-            RelayOutputs: 1,
+            InputConnectors: 4,
+            RelayOutputs: 4,
             Extension: {
               Auxiliary: false,
               AuxiliaryCommands: "",
@@ -204,7 +204,7 @@ class DeviceService extends SoapService {
         GetCapabilitiesResponse.Capabilities["Events"] = {
           XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/events_service`,
           WSSubscriptionPolicySupport: false,
-          WSPullPointSupport: false,
+          WSPullPointSupport: true,
           WSPausableSubscriptionManagerInterfaceSupport: false
         }
       }
@@ -463,17 +463,19 @@ class DeviceService extends SoapService {
     };
 
     port.GetRelayOutputs = (args /*, cb, headers*/) => {
-      var GetRelayOutputsResponse = {
-        RelayOutputs: [{
-          attributes: {
-            token: "relay1"
-          },
-          Properties : {
-            Mode: "Bistable",
-            // DelayTime: "",
-            IdleState: "open"
-          }
-        }]
+      const relayOutputs = Array.from({ length: 4 }, (_, idx) => ({
+        attributes: {
+          token: `relay${idx + 1}`,
+        },
+        Properties: {
+          Mode: "Bistable",
+          // DelayTime: "",
+          IdleState: "open",
+        },
+      }));
+
+      const GetRelayOutputsResponse = {
+        RelayOutputs: relayOutputs,
       };
       return GetRelayOutputsResponse;
     };

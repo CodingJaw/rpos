@@ -25,9 +25,11 @@ var version = 'rpos-' + pkg.version;
 var releaseDir = 'release/' + version;
 
 
-//Compile task: compiles all .ts files to .js and generates sourcemaps to aid in debugging.
+// Compile task: compiles source .ts files to .js and generates sourcemaps to aid in debugging.
+// Test files are excluded because they rely on Jest type definitions that are not required for
+// runtime builds and may not be present in production environments.
 gulp.task('default', function () {
-    return gulp.src(["**/*.ts", "!./node_modules/**/*", "!./typings/**/*"])
+    return gulp.src(["**/*.ts", "!./node_modules/**/*", "!./typings/**/*", "!./test/**/*"])
         .pipe(sourcemaps.init())
         .pipe(ts('tsconfig.json'))
         .js
