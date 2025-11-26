@@ -6,6 +6,7 @@ import { Utils } from '../lib/utils';
 import { Server } from 'http';
 import {
   SUBSCRIPTION_DEFAULT_TTL_MS,
+  SubscriptionDeliveryMode,
   createSubscriptionWithExpiration,
   findSubscription,
   getSubscription,
@@ -121,21 +122,31 @@ function extractDeliveryMode(delivery: any): string | undefined {
   return extractText(delivery.Mode) || extractText(attributes?.Mode) || extractText(delivery);
 }
 
-function assertPullDeliverySupported(args: any) {
-  const deliveryMode = extractDeliveryMode(args?.Delivery);
-  if (deliveryMode && !deliveryMode.toLowerCase().includes(PULL_DELIVERY_HINT)) {
-    throw createOnvifFault('ter:ActionNotSupported', 'Only PullPoint delivery is supported');
+function resolveDeliveryMode(args: any): { mode: SubscriptionDeliveryMode; consumerAddress?: string } {
+  const deliveryMode = extractDeliveryMode(args?.Delivery)?.toLowerCase();
+  const consumerAddress = extractAddress(args?.ConsumerReference);
+
+  const requestsPull = deliveryMode ? deliveryMode.includes(PULL_DELIVERY_HINT) : false;
+  const requestsPush = deliveryMode ? deliveryMode.includes('push') || deliveryMode.includes('http') : false;
+
+  let mode: SubscriptionDeliveryMode = 'pull';
+
+  if (requestsPull) {
+    mode = 'pull';
+  } else if (requestsPush || consumerAddress) {
+    mode = 'push';
   }
 
-  const consumerAddress = extractAddress(args?.ConsumerReference);
-  if (consumerAddress && !consumerAddress.toLowerCase().includes(PULL_DELIVERY_HINT)) {
-    throw createOnvifFault('ter:ActionNotSupported', 'Only PullPoint delivery is supported');
+  if (mode === 'push' && !consumerAddress) {
+    throw createOnvifFault('ter:InvalidArgVal', 'ConsumerReference is required for push subscriptions');
   }
+
+  return { mode, consumerAddress };
 }
 
-function createSubscriptionForExpiration(expiration: number) {
+function createSubscriptionForExpiration(expiration: number, mode: SubscriptionDeliveryMode, consumerAddress?: string) {
   const adjustedExpiration = Math.max(expiration, Date.now() + 1);
-  return createSubscriptionWithExpiration(adjustedExpiration);
+  return createSubscriptionWithExpiration(adjustedExpiration, mode, consumerAddress);
 }
 
 function buildEndpointReference(subscriptionId: string, serviceUrl: string) {
@@ -229,7 +240,7 @@ class EventService extends SoapService {
 
     port.CreatePullPointSubscription = (args: any) => {
       const expiration = resolveExpiration(args?.InitialTerminationTime);
-      const { id, expiresAt } = createSubscriptionForExpiration(expiration);
+      const { id, expiresAt } = createSubscriptionForExpiration(expiration, 'pull');
 
       const subscriptionReference = buildEndpointReference(id, serviceUrl);
 
@@ -264,6 +275,10 @@ class EventService extends SoapService {
         if (isSubscriptionExpired(existingSubscription)) {
           purgeExpiredSubscriptions();
           throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
+        }
+
+        if (existingSubscription.mode === 'push') {
+          throw createOnvifFault('ter:ActionNotSupported', 'PullMessages is not supported for push subscriptions');
         }
 
         const timeoutMs = resolveTimeoutMs(args?.Timeout);
@@ -364,10 +379,10 @@ class EventService extends SoapService {
     port.Subscribe = (args: any) => {
       purgeExpiredSubscriptions();
 
-      assertPullDeliverySupported(args);
+      const { mode, consumerAddress } = resolveDeliveryMode(args);
 
       const expiration = resolveExpiration(args?.InitialTerminationTime);
-      const { id, expiresAt } = createSubscriptionForExpiration(expiration);
+      const { id, expiresAt } = createSubscriptionForExpiration(expiration, mode, consumerAddress);
 
       const subscriptionReference = buildEndpointReference(id, serviceUrl);
 

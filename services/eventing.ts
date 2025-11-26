@@ -1,30 +1,51 @@
 import { Utils } from '../lib/utils';
+import http = require('http');
+import https = require('https');
+import { URL } from 'url';
+import { Builder } from 'xml2js';
 
 const utils = Utils.utils;
 
+const xmlBuilder = new Builder({ headless: true });
+
 export const SUBSCRIPTION_DEFAULT_TTL_MS = 10000;
+export const MAX_PUSH_QUEUE = 50;
+
+export type SubscriptionDeliveryMode = 'pull' | 'push';
 
 export type PendingPull = {
   messageLimit?: number;
   resolve: (messages: any[]) => void;
 };
 
+export type NotificationMessage = {
+  Topic: any;
+  Message: any;
+};
+
 export type SubscriptionState = {
   expiresAt: number;
-  queue: any[];
+  queue: NotificationMessage[];
   waiters: PendingPull[];
+  mode: SubscriptionDeliveryMode;
+  consumerUrl?: string;
+  dispatching?: boolean;
 };
 
 export const activeSubscriptions = new Map<string, SubscriptionState>();
 
-export function createSubscriptionWithExpiration(expiresAt: number) {
+export function createSubscriptionWithExpiration(
+  expiresAt: number,
+  mode: SubscriptionDeliveryMode = 'pull',
+  consumerUrl?: string,
+) {
   const id = 'sub-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-  activeSubscriptions.set(id, { expiresAt, queue: [], waiters: [] });
+  activeSubscriptions.set(id, { expiresAt, queue: [], waiters: [], mode, consumerUrl, dispatching: false });
   return { id, expiresAt };
 }
 
-export function createSubscription(ttlMs: number = SUBSCRIPTION_DEFAULT_TTL_MS) {
-  return createSubscriptionWithExpiration(Date.now() + ttlMs);
+export function createSubscription(ttlMs: number = SUBSCRIPTION_DEFAULT_TTL_MS, mode: SubscriptionDeliveryMode = 'pull') {
+  return createSubscriptionWithExpiration(Date.now() + ttlMs, mode);
 }
 
 export function getSubscription(id: string | undefined) {
@@ -138,42 +159,47 @@ export function pushInputAlarmEvent(channel: string | number, state: string | bo
   purgeExpiredSubscriptions();
 
   const value = state === true || state === 'true' || state === 'active' ? 'true' : 'false';
+  const utcNow = new Date().toISOString();
 
   const topic = {
     _: 'tns1:Device/Trigger/DigitalInput',
-    '$': {
-      Dialect: 'http://www.onvif.org/ver10/tev/topicExpression/ConcreteSet'
-    }
+    $: {
+      Dialect: 'http://www.onvif.org/ver10/tev/topicExpression/ConcreteSet',
+    },
   };
 
   const message = {
     'tt:Message': {
+      $: {
+        UtcTime: utcNow,
+        PropertyOperation: 'Changed',
+      },
       Source: {
         'tt:SimpleItem': [
           {
-            '$': {
+            $: {
               Name: 'InputToken',
-              Value: String(channel)
-            }
-          }
-        ]
+              Value: String(channel),
+            },
+          },
+        ],
       },
       Data: {
         'tt:SimpleItem': [
           {
-            '$': {
+            $: {
               Name: 'LogicalState',
-              Value: value
-            }
-          }
-        ]
-      }
-    }
+              Value: value,
+            },
+          },
+        ],
+      },
+    },
   };
 
-  const notification = {
+  const notification: NotificationMessage = {
     Topic: topic,
-    Message: message
+    Message: message,
   };
 
   activeSubscriptions.forEach((sub, id) => {
@@ -181,8 +207,111 @@ export function pushInputAlarmEvent(channel: string | number, state: string | bo
       activeSubscriptions.delete(id);
       return;
     }
+
     utils.log.debug('Queueing input event for subscription %s', id);
     sub.queue.push(notification);
-    notifyWaiters(sub);
+
+    if (sub.mode === 'pull') {
+      notifyWaiters(sub);
+    } else {
+      dispatchPushQueue(id, sub);
+    }
+
+    if (sub.mode === 'push' && sub.queue.length > MAX_PUSH_QUEUE) {
+      sub.queue.splice(0, sub.queue.length - MAX_PUSH_QUEUE);
+      utils.log.warn('Push queue trimmed for subscription %s due to size limits', id);
+    }
   });
+}
+
+function buildNotificationEnvelope(notification: NotificationMessage) {
+  return {
+    's:Envelope': {
+      $: {
+        'xmlns:s': 'http://www.w3.org/2003/05/soap-envelope',
+        'xmlns:wsnt': 'http://docs.oasis-open.org/wsn/b-2',
+        'xmlns:tt': 'http://www.onvif.org/ver10/schema',
+        'xmlns:wsa5': 'http://www.w3.org/2005/08/addressing',
+        'xmlns:tns1': 'http://www.onvif.org/ver10/topics',
+      },
+      's:Body': {
+        'wsnt:Notify': {
+          'wsnt:NotificationMessage': {
+            'wsnt:Topic': notification.Topic,
+            'wsnt:Message': notification.Message,
+          },
+        },
+      },
+    },
+  };
+}
+
+function sendHttpPost(urlString: string, body: string) {
+  return new Promise<void>((resolve, reject) => {
+    try {
+      const parsed = new URL(urlString);
+      const transport = parsed.protocol === 'https:' ? https : http;
+
+      const req = transport.request(
+        {
+          hostname: parsed.hostname,
+          port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+          path: parsed.pathname + (parsed.search || ''),
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/soap+xml; charset=utf-8',
+            'Content-Length': Buffer.byteLength(body),
+          },
+          timeout: 5000,
+        },
+        (res) => {
+          res.on('data', () => {});
+          res.on('end', () => resolve());
+        },
+      );
+
+      req.on('error', (err) => reject(err));
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('HTTP request timed out'));
+      });
+
+      req.write(body);
+      req.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+async function dispatchPushQueue(id: string, sub: SubscriptionState) {
+  if (sub.mode !== 'push' || !sub.consumerUrl) {
+    return;
+  }
+
+  if (sub.dispatching) {
+    return;
+  }
+
+  sub.dispatching = true;
+
+  try {
+    while (sub.queue.length > 0) {
+      const next = sub.queue.shift();
+      if (!next) {
+        break;
+      }
+
+      try {
+        const envelope = buildNotificationEnvelope(next);
+        const xml = xmlBuilder.buildObject(envelope);
+        utils.log.debug('Sending push notification to %s for subscription %s', sub.consumerUrl, id);
+        await sendHttpPost(sub.consumerUrl, xml);
+      } catch (err) {
+        utils.log.warn('Failed to send push notification to %s: %s', sub.consumerUrl, err?.message || err);
+      }
+    }
+  } finally {
+    sub.dispatching = false;
+  }
 }
