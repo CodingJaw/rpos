@@ -143,15 +143,19 @@ function buildEndpointReference(subscriptionId: string, serviceUrl: string) {
     },
     'wsa5:Address': serviceUrl,
     'wsa5:ReferenceParameters': {
-      SubscriptionId: subscriptionId,
+      'wsa5:SubscriptionId': subscriptionId,
     },
   };
 }
 
 function extractSubscriptionId(reference: any): string | undefined {
+  const refParams = reference?.['wsa5:ReferenceParameters'] ?? reference?.ReferenceParameters;
+
   return (
-    extractText(reference?.['wsa5:ReferenceParameters']?.SubscriptionId) ||
-    extractText(reference?.ReferenceParameters?.SubscriptionId) ||
+    extractText(refParams?.['wsa5:SubscriptionId']) ||
+    extractText(refParams?.SubscriptionId) ||
+    extractText(reference?.['wsa5:SubscriptionId']) ||
+    extractText(reference?.SubscriptionId) ||
     extractText(reference?.Address) ||
     extractText(reference?.['wsa5:Address']) ||
     extractText(reference)
@@ -226,40 +230,57 @@ class EventService extends SoapService {
       };
     };
 
-    port.PullMessages = async (args: any) => {
-      purgeExpiredSubscriptions();
-
-      const subscriptionId = extractSubscriptionId(args?.SubscriptionReference);
-      if (!subscriptionId) {
-        throw createOnvifFault('ter:InvalidArgVal', 'SubscriptionReference is required');
-      }
-
-      const existingSubscription = findSubscription(subscriptionId);
-      if (!existingSubscription) {
-        throw createOnvifFault('ter:InvalidArgVal', 'Subscription not found');
-      }
-
-      if (isSubscriptionExpired(existingSubscription)) {
-        purgeExpiredSubscriptions();
-        throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
-      }
-
-      const timeoutMs = resolveTimeoutMs(args?.Timeout);
-      const messageLimit = resolveMessageLimit(args?.MessageLimit);
-
-      const waitMs = Math.min(timeoutMs, Math.max(0, existingSubscription.expiresAt - Date.now()));
-      const notifications = await waitForMessages(subscriptionId!, waitMs, messageLimit);
-
-      const activeSubscription = getSubscription(subscriptionId);
-      if (!activeSubscription) {
-        throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
-      }
-
-      return {
-        CurrentTime: new Date().toISOString(),
-        TerminationTime: new Date(activeSubscription.expiresAt).toISOString(),
-        NotificationMessage: notifications || [],
+    port.PullMessages = (args: any, callback: (result: any) => void) => {
+      const respond = (result: any) => {
+        if (typeof callback === 'function') {
+          callback(result);
+        }
+        return result;
       };
+
+      const send = async () => {
+        purgeExpiredSubscriptions();
+
+        const subscriptionId = extractSubscriptionId(args?.SubscriptionReference);
+        if (!subscriptionId) {
+          throw createOnvifFault('ter:InvalidArgVal', 'SubscriptionReference is required');
+        }
+
+        const existingSubscription = findSubscription(subscriptionId);
+        if (!existingSubscription) {
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription not found');
+        }
+
+        if (isSubscriptionExpired(existingSubscription)) {
+          purgeExpiredSubscriptions();
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
+        }
+
+        const timeoutMs = resolveTimeoutMs(args?.Timeout);
+        const messageLimit = resolveMessageLimit(args?.MessageLimit);
+
+        const waitMs = Math.min(timeoutMs, Math.max(0, existingSubscription.expiresAt - Date.now()));
+        const notifications = await waitForMessages(subscriptionId, waitMs, messageLimit);
+
+        const activeSubscription = getSubscription(subscriptionId);
+        if (!activeSubscription) {
+          throw createOnvifFault('ter:InvalidArgVal', 'Subscription has expired');
+        }
+
+        return {
+          CurrentTime: new Date().toISOString(),
+          TerminationTime: new Date(activeSubscription.expiresAt).toISOString(),
+          NotificationMessage: notifications || [],
+        };
+      };
+
+      return send().then(respond).catch((err) => {
+        if (typeof callback === 'function') {
+          callback(err);
+          return;
+        }
+        throw err;
+      });
     };
 
     port.GetEventProperties = (args: any) => {
