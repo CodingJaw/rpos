@@ -4,6 +4,20 @@ const { Utils } = require('../../lib/utils');
 const utils = Utils.utils;
 
 function buildService(config, callback) {
+  const relayOutputs = Array.from({ length: 4 }, (_, index) => ({
+    token: `relay${index + 1}`,
+    logicalState: 'inactive',
+    properties: {
+      Mode: 'Bistable',
+      IdleState: 'open',
+    },
+  }));
+
+  const inputConnectors = Array.from({ length: 4 }, (_, index) => ({
+    token: `input${index + 1}`,
+    Activated: false,
+  }));
+
   return {
     DeviceService: {
       Device: {
@@ -116,8 +130,8 @@ function buildService(config, callback) {
                 }
               },
               IO: {
-                InputConnectors: 0,
-                RelayOutputs: 1,
+                InputConnectors: inputConnectors.length,
+                RelayOutputs: relayOutputs.length,
                 Extension: { Auxiliary: false, AuxiliaryCommands: '', Extension: {} }
               },
               Security: {
@@ -342,22 +356,43 @@ function buildService(config, callback) {
 
         GetRelayOutputs() {
           return {
-            RelayOutputs: [
-              {
-                attributes: { token: 'relay1' },
-                Properties: {
-                  Mode: 'Bistable',
-                  IdleState: 'open'
-                }
-              }
-            ]
+            RelayOutputs: relayOutputs.map((relay) => ({
+              attributes: { token: relay.token },
+              Properties: relay.properties,
+              // Provide current logical state to allow alarm consumers to poll status
+              LogicalState: relay.logicalState,
+            })),
           };
         },
 
         SetRelayOutputState(args) {
-          if (callback) {
-            if (args.LogicalState === 'active') callback('relayactive', { name: args.RelayOutputToken });
-            if (args.LogicalState === 'inactive') callback('relayinactive', { name: args.RelayOutputToken });
+          const relay = relayOutputs.find((candidate) => candidate.token === args.RelayOutputToken);
+          if (relay) {
+            relay.logicalState = args.LogicalState;
+            if (callback) {
+              if (args.LogicalState === 'active') callback('relayactive', { name: args.RelayOutputToken });
+              if (args.LogicalState === 'inactive') callback('relayinactive', { name: args.RelayOutputToken });
+            }
+          }
+          return {};
+        },
+
+        GetDigitalInputs() {
+          return {
+            DigitalInputs: inputConnectors.map((input) => ({
+              attributes: { token: input.token },
+              Activated: input.Activated,
+            })),
+          };
+        },
+
+        SetDigitalInputState(args) {
+          const input = inputConnectors.find((candidate) => candidate.token === args.InputToken);
+          if (input) {
+            input.Activated = args.Activated;
+            if (callback) {
+              callback(args.Activated ? 'inputactive' : 'inputinactive', { name: input.token });
+            }
           }
           return {};
         },
