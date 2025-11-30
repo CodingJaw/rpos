@@ -5,6 +5,7 @@ import util = require("util");
 import os = require('os');
 import SoapService = require('../lib/SoapService');
 import MediaService = require("./media_service");
+import EventsService = require("./events_service");
 import { Utils }  from '../lib/utils';
 import { Server } from 'http';
 import ip = require('ip');
@@ -172,13 +173,26 @@ class DeviceService extends SoapService {
           }
         },
         //Events
-        { 
+        {
+          Namespace : EventsService.namespace,
+          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}${EventsService.path}`,
+          Capabilities : {
+            WSSubscriptionPolicySupport : "false",
+            WSPullPointSupport : "true",
+            WSPausableSubscriptionManagerInterfaceSupport : "false"
+          },
+          Version : {
+            Major : 20,
+            Minor : 12,
+          }
+        },
+        {
           Namespace : "http://www.onvif.org/ver20/imaging/wsdl",
           XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/imaging_service`,
           Capabilities : {
             ImageStabilization : "false"
           },
-          Version : { 
+          Version : {
             Major : 16,
             Minor : 6,
           }

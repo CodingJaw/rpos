@@ -140,5 +140,6 @@ media_service.start();
 media2_service.start();
 ptz_service.start();
 imaging_service.start();
+events_service.start();
 discovery_service.start();
 event_service.start();
