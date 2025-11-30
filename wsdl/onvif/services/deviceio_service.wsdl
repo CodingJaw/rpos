@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<wsdl:definitions xmlns:i1="http://www.onvif.org/ver10/deviceIO/wsdl" 
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" 
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:import namespace="http://www.onvif.org/ver10/deviceIO/wsdl" location="../wsdl/deviceio.wsdl"/>
+  
+  <wsdl:service name="DeviceIOService">
+    <wsdl:port name="DeviceIOPort" binding="i1:DeviceIOBinding">
+      <soap:address location="http://localhost/onvif/deviceio_service"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

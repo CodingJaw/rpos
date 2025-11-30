@@ -5,7 +5,6 @@
         "noImplicitAny": false,
         "removeComments": true,
         "preserveConstEnums": false,
-        "sourceMap": true,
-        "watch": false
+        "sourceMap": true
     }
 }

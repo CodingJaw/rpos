@@ -30,13 +30,14 @@ class PTZService extends SoapService {
     this.serviceOptions = {
       path: '/onvif/ptz_service',
       services: this.ptz_service,
-      xml: fs.readFileSync('./wsdl/ptz_service.wsdl', 'utf8'),
-      wsdlPath: 'wsdl/ptz_service.wsdl',
-      onReady: () => console.log('ptz_service started')
+      xml: fs.readFileSync('./wsdl/onvif/services/ptz_service.wsdl', 'utf8'),
+      uri: 'wsdl/onvif/services/ptz_service.wsdl',
+      callback: () => console.log('ptz_service started')
     };
 
     for (var i = 1; i <=  255; i++) {
-      this.presetArray.push({profileToken: 'profile_token', presetName: '', presetToken: i.toString(), used: false});
+      this.presetArray.push({profileToken: 'h264_token', presetName: '', presetToken: i.toString(), used: false});
+      this.presetArray.push({profileToken: 'mjpeg_token', presetName: '', presetToken: i.toString(), used: false});
     }  
 
     this.extendService();

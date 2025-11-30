@@ -91,6 +91,9 @@ exports.Media2Service = {
                 //Name : { xs:string},
                 //UseCount : { xs:int}
               //
+                //attributes : {
+                  //ViewMode : {xs:string}
+                //},
                 //SourceToken : { xs:string},
                 //Bounds : { 
                   //attributes : {
@@ -106,7 +109,29 @@ exports.Media2Service = {
                     //Degree : { xs:int},
                     //Extension : { }
                   //},
-                  //Extension : { }
+                  //Extension : { 
+                    //LensDescription : [{ 
+                      //attributes : {
+                        //FocalLength : {xs:float}
+                      //},
+                      //Offset : { 
+                        //attributes : {
+                          //x : {xs:float},
+                          //y : {xs:float}
+                        //}
+                      //},
+                      //Projection : { 
+                        //Angle : { xs:float},
+                        //Radius : { xs:float},
+                        //Transmittance : { xs:float}
+                      //},
+                      //XFactor : { xs:float}
+                    //}],
+                    //SceneOrientation : [{ 
+                      //Mode : { xs:string},
+                      //Orientation : { xs:string}
+                    //}]
+                  //}
                 //}
               //},
               //AudioSource : { 
@@ -118,8 +143,63 @@ exports.Media2Service = {
               //
                 //SourceToken : { xs:string}
               //},
-              //VideoEncoder : { tt:VideoEncoder2Configuration},
-              //AudioEncoder : { tt:AudioEncoder2Configuration},
+              //VideoEncoder : { 
+                //attributes : {
+                  //token : {tt:ReferenceToken}
+                //},
+                //Name : { xs:string},
+                //UseCount : { xs:int}
+              //
+                //attributes : {
+                  //GovLength : {xs:int},
+                  //Profile : {xs:string},
+                  //GuaranteedFrameRate : {xs:boolean}
+                //},
+                //Encoding : { xs:string},
+                //Resolution : { 
+                  //Width : { xs:int},
+                  //Height : { xs:int}
+                //},
+                //RateControl : { 
+                  //attributes : {
+                    //ConstantBitRate : {xs:boolean}
+                  //},
+                  //FrameRateLimit : { xs:float},
+                  //BitrateLimit : { xs:int}
+                //},
+                //Multicast : { 
+                  //Address : { 
+                    //Type : { xs:string},
+                    //IPv4Address : { xs:token},
+                    //IPv6Address : { xs:token}
+                  //},
+                  //Port : { xs:int},
+                  //TTL : { xs:int},
+                  //AutoStart : { xs:boolean}
+                //},
+                //Quality : { xs:float}
+              //},
+              //AudioEncoder : { 
+                //attributes : {
+                  //token : {tt:ReferenceToken}
+                //},
+                //Name : { xs:string},
+                //UseCount : { xs:int}
+              //
+                //Encoding : { xs:string},
+                //Multicast : { 
+                  //Address : { 
+                    //Type : { xs:string},
+                    //IPv4Address : { xs:token},
+                    //IPv6Address : { xs:token}
+                  //},
+                  //Port : { xs:int},
+                  //TTL : { xs:int},
+                  //AutoStart : { xs:boolean}
+                //},
+                //Bitrate : { xs:int},
+                //SampleRate : { xs:int}
+              //},
               //Analytics : { 
                 //attributes : {
                   //token : {tt:ReferenceToken}
@@ -234,7 +314,9 @@ exports.Media2Service = {
                 //UseCount : { xs:int}
               //
                 //attributes : {
-                  //CompressionType : {xs:string}
+                  //CompressionType : {xs:string},
+                  //GeoLocation : {xs:boolean},
+                  //ShapePolygon : {xs:boolean}
                 //},
                 //PTZStatus : { 
                   //Status : { xs:boolean},
@@ -289,6 +371,17 @@ exports.Media2Service = {
                 //},
                 //Name : { xs:string},
                 //UseCount : { xs:int}
+              //},
+              //Receiver : { 
+                //Mode : { xs:string},
+                //MediaUri : { xs:anyURI},
+                //StreamSetup : { 
+                  //Stream : { xs:string}
+                //}
+              //
+                //attributes : {
+                  //token : {tt:ReferenceToken}
+                //}
               //}
             //}
           //}]
@@ -347,6 +440,9 @@ exports.Media2Service = {
             //Name : { xs:string},
             //UseCount : { xs:int}
           //
+            //attributes : {
+              //ViewMode : {xs:string}
+            //},
             //SourceToken : { xs:string},
             //Bounds : { 
               //attributes : {
@@ -362,7 +458,29 @@ exports.Media2Service = {
                 //Degree : { xs:int},
                 //Extension : { }
               //},
-              //Extension : { }
+              //Extension : { 
+                //LensDescription : [{ 
+                  //attributes : {
+                    //FocalLength : {xs:float}
+                  //},
+                  //Offset : { 
+                    //attributes : {
+                      //x : {xs:float},
+                      //y : {xs:float}
+                    //}
+                  //},
+                  //Projection : { 
+                    //Angle : { xs:float},
+                    //Radius : { xs:float},
+                    //Transmittance : { xs:float}
+                  //},
+                  //XFactor : { xs:float}
+                //}],
+                //SceneOrientation : [{ 
+                  //Mode : { xs:string},
+                  //Orientation : { xs:string}
+                //}]
+              //}
             //}
           //}]
         //
@@ -374,7 +492,42 @@ exports.Media2Service = {
       GetVideoEncoderConfigurations : function(args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
         //var GetVideoEncoderConfigurationsResponse = { 
-          //Configurations : [{ tt:VideoEncoder2Configuration}]
+          //Configurations : [{ 
+            //attributes : {
+              //token : {tt:ReferenceToken}
+            //},
+            //Name : { xs:string},
+            //UseCount : { xs:int}
+          //
+            //attributes : {
+              //GovLength : {xs:int},
+              //Profile : {xs:string},
+              //GuaranteedFrameRate : {xs:boolean}
+            //},
+            //Encoding : { xs:string},
+            //Resolution : { 
+              //Width : { xs:int},
+              //Height : { xs:int}
+            //},
+            //RateControl : { 
+              //attributes : {
+                //ConstantBitRate : {xs:boolean}
+              //},
+              //FrameRateLimit : { xs:float},
+              //BitrateLimit : { xs:int}
+            //},
+            //Multicast : { 
+              //Address : { 
+                //Type : { xs:string},
+                //IPv4Address : { xs:token},
+                //IPv6Address : { xs:token}
+              //},
+              //Port : { xs:int},
+              //TTL : { xs:int},
+              //AutoStart : { xs:boolean}
+            //},
+            //Quality : { xs:float}
+          //}]
         //
         //};
         //return GetVideoEncoderConfigurationsResponse;
@@ -402,7 +555,27 @@ exports.Media2Service = {
       GetAudioEncoderConfigurations : function(args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
         //var GetAudioEncoderConfigurationsResponse = { 
-          //Configurations : [{ tt:AudioEncoder2Configuration}]
+          //Configurations : [{ 
+            //attributes : {
+              //token : {tt:ReferenceToken}
+            //},
+            //Name : { xs:string},
+            //UseCount : { xs:int}
+          //
+            //Encoding : { xs:string},
+            //Multicast : { 
+              //Address : { 
+                //Type : { xs:string},
+                //IPv4Address : { xs:token},
+                //IPv6Address : { xs:token}
+              //},
+              //Port : { xs:int},
+              //TTL : { xs:int},
+              //AutoStart : { xs:boolean}
+            //},
+            //Bitrate : { xs:int},
+            //SampleRate : { xs:int}
+          //}]
         //
         //};
         //return GetAudioEncoderConfigurationsResponse;
@@ -465,7 +638,9 @@ exports.Media2Service = {
             //UseCount : { xs:int}
           //
             //attributes : {
-              //CompressionType : {xs:string}
+              //CompressionType : {xs:string},
+              //GeoLocation : {xs:boolean},
+              //ShapePolygon : {xs:boolean}
             //},
             //PTZStatus : { 
               //Status : { xs:boolean},
@@ -552,6 +727,9 @@ exports.Media2Service = {
           //Name : { xs:string},
           //UseCount : { xs:int}
         //
+          //attributes : {
+            //ViewMode : {xs:string}
+          //},
           //SourceToken : { xs:string},
           //Bounds : { 
             //attributes : {
@@ -567,7 +745,29 @@ exports.Media2Service = {
               //Degree : { xs:int},
               //Extension : { }
             //},
-            //Extension : { }
+            //Extension : { 
+              //LensDescription : [{ 
+                //attributes : {
+                  //FocalLength : {xs:float}
+                //},
+                //Offset : { 
+                  //attributes : {
+                    //x : {xs:float},
+                    //y : {xs:float}
+                  //}
+                //},
+                //Projection : { 
+                  //Angle : { xs:float},
+                  //Radius : { xs:float},
+                  //Transmittance : { xs:float}
+                //},
+                //XFactor : { xs:float}
+              //}],
+              //SceneOrientation : [{ 
+                //Mode : { xs:string},
+                //Orientation : { xs:string}
+              //}]
+            //}
           //}
         //}
       //
@@ -579,7 +779,42 @@ exports.Media2Service = {
       },
 
       //var SetVideoEncoderConfiguration = { 
-        //Configuration : { tt:VideoEncoder2Configuration}
+        //Configuration : { 
+          //attributes : {
+            //token : {tt:ReferenceToken}
+          //},
+          //Name : { xs:string},
+          //UseCount : { xs:int}
+        //
+          //attributes : {
+            //GovLength : {xs:int},
+            //Profile : {xs:string},
+            //GuaranteedFrameRate : {xs:boolean}
+          //},
+          //Encoding : { xs:string},
+          //Resolution : { 
+            //Width : { xs:int},
+            //Height : { xs:int}
+          //},
+          //RateControl : { 
+            //attributes : {
+              //ConstantBitRate : {xs:boolean}
+            //},
+            //FrameRateLimit : { xs:float},
+            //BitrateLimit : { xs:int}
+          //},
+          //Multicast : { 
+            //Address : { 
+              //Type : { xs:string},
+              //IPv4Address : { xs:token},
+              //IPv6Address : { xs:token}
+            //},
+            //Port : { xs:int},
+            //TTL : { xs:int},
+            //AutoStart : { xs:boolean}
+          //},
+          //Quality : { xs:float}
+        //}
       //
       //};
       SetVideoEncoderConfiguration : function(args /*, cb, headers*/) {
@@ -607,7 +842,27 @@ exports.Media2Service = {
       },
 
       //var SetAudioEncoderConfiguration = { 
-        //Configuration : { tt:AudioEncoder2Configuration}
+        //Configuration : { 
+          //attributes : {
+            //token : {tt:ReferenceToken}
+          //},
+          //Name : { xs:string},
+          //UseCount : { xs:int}
+        //
+          //Encoding : { xs:string},
+          //Multicast : { 
+            //Address : { 
+              //Type : { xs:string},
+              //IPv4Address : { xs:token},
+              //IPv6Address : { xs:token}
+            //},
+            //Port : { xs:int},
+            //TTL : { xs:int},
+            //AutoStart : { xs:boolean}
+          //},
+          //Bitrate : { xs:int},
+          //SampleRate : { xs:int}
+        //}
       //
       //};
       SetAudioEncoderConfiguration : function(args /*, cb, headers*/) {
@@ -625,7 +880,9 @@ exports.Media2Service = {
           //UseCount : { xs:int}
         //
           //attributes : {
-            //CompressionType : {xs:string}
+            //CompressionType : {xs:string},
+            //GeoLocation : {xs:boolean},
+            //ShapePolygon : {xs:boolean}
           //},
           //PTZStatus : { 
             //Status : { xs:boolean},
@@ -712,6 +969,9 @@ exports.Media2Service = {
         throw NOT_IMPLEMENTED;
         //var GetVideoSourceConfigurationOptionsResponse = { 
           //Options : { 
+            //attributes : {
+              //MaximumNumberOfProfiles : {xs:int}
+            //},
             //BoundsRange : { 
               //XRange : { 
                 //Min : { xs:int},
@@ -733,13 +993,18 @@ exports.Media2Service = {
             //VideoSourceTokensAvailable : { xs:string},
             //Extension : { 
               //Rotate : { 
+                //attributes : {
+                  //Reboot : {xs:boolean}
+                //},
                 //Mode : { xs:string},
                 //DegreeList : { 
                   //Items : [{ xs:int}]
                 //},
                 //Extension : { }
               //},
-              //Extension : { }
+              //Extension : { 
+                //SceneOrientationMode : [{ xs:string}]
+              //}
             //}
           //}
         //
@@ -751,7 +1016,28 @@ exports.Media2Service = {
       GetVideoEncoderConfigurationOptions : function(args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
         //var GetVideoEncoderConfigurationOptionsResponse = { 
-          //Options : { tt:VideoEncoder2ConfigurationOptions}
+          //Options : { 
+            //attributes : {
+              //GovLengthRange : {tt:IntList},
+              //FrameRatesSupported : {tt:FloatList},
+              //ProfilesSupported : {tt:StringAttrList},
+              //ConstantBitRateSupported : {xs:boolean},
+              //GuaranteedFrameRateSupported : {xs:boolean}
+            //},
+            //Encoding : { xs:string},
+            //QualityRange : { 
+              //Min : { xs:float},
+              //Max : { xs:float}
+            //},
+            //ResolutionsAvailable : { 
+              //Width : { xs:int},
+              //Height : { xs:int}
+            //},
+            //BitrateRange : { 
+              //Min : { xs:int},
+              //Max : { xs:int}
+            //}
+          //}
         //
         //};
         //return GetVideoEncoderConfigurationOptionsResponse;
@@ -774,7 +1060,15 @@ exports.Media2Service = {
       GetAudioEncoderConfigurationOptions : function(args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
         //var GetAudioEncoderConfigurationOptionsResponse = { 
-          //Options : { tt:AudioEncoder2ConfigurationOptions}
+          //Options : { 
+            //Encoding : { xs:string},
+            //BitrateList : { 
+              //Items : [{ xs:int}]
+            //},
+            //SampleRateList : { 
+              //Items : [{ xs:int}]
+            //}
+          //}
         //
         //};
         //return GetAudioEncoderConfigurationOptionsResponse;
@@ -785,6 +1079,10 @@ exports.Media2Service = {
         throw NOT_IMPLEMENTED;
         //var GetMetadataConfigurationOptionsResponse = { 
           //Options : { 
+            //attributes : {
+              //GeoLocation : {xs:boolean},
+              //MaxContentFilterSize : {xs:int}
+            //},
             //PTZStatusFilterOptions : { 
               //PanTiltStatusSupported : { xs:boolean},
               //ZoomStatusSupported : { xs:boolean},
@@ -823,7 +1121,15 @@ exports.Media2Service = {
       GetAudioDecoderConfigurationOptions : function(args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
         //var GetAudioDecoderConfigurationOptionsResponse = { 
-          //Options : { tt:AudioEncoder2ConfigurationOptions}
+          //Options : { 
+            //Encoding : { xs:string},
+            //BitrateList : { 
+              //Items : [{ xs:int}]
+            //},
+            //SampleRateList : { 
+              //Items : [{ xs:int}]
+            //}
+          //}
         //
         //};
         //return GetAudioDecoderConfigurationOptionsResponse;
@@ -967,6 +1273,9 @@ xs:string
               //Extension : { }
             //},
             //TextString : { 
+              //attributes : {
+                //IsPersistentText : {xs:boolean}
+              //},
               //Type : { xs:string},
               //DateFormat : { xs:string},
               //TimeFormat : { xs:string},
@@ -1058,6 +1367,12 @@ xs:string
               //Extension : { }
             //},
             //ImageOption : { 
+              //attributes : {
+                //FormatsSupported : {tt:StringAttrList},
+                //MaxSize : {xs:int},
+                //MaxWidth : {xs:int},
+                //MaxHeight : {xs:int}
+              //},
               //ImagePath : { xs:anyURI},
               //Extension : { }
             //},
@@ -1074,8 +1389,7 @@ xs:string
             //token : {tt:ReferenceToken}
           //}
         //
-          //VideoSourceConfigurationToken : { 
-xs:string
+          //VideoSourceConfigurationToken : { xs:string
           //},
           //Type : { xs:string},
           //Position : { 
@@ -1089,6 +1403,9 @@ xs:string
             //Extension : { }
           //},
           //TextString : { 
+            //attributes : {
+              //IsPersistentText : {xs:boolean}
+            //},
             //Type : { xs:string},
             //DateFormat : { xs:string},
             //TimeFormat : { xs:string},
@@ -1142,8 +1459,7 @@ xs:string
             //token : {tt:ReferenceToken}
           //}
         //
-          //VideoSourceConfigurationToken : { 
-xs:string
+          //VideoSourceConfigurationToken : { xs:string
           //},
           //Type : { xs:string},
           //Position : { 
@@ -1157,6 +1473,9 @@ xs:string
             //Extension : { }
           //},
           //TextString : { 
+            //attributes : {
+              //IsPersistentText : {xs:boolean}
+            //},
             //Type : { xs:string},
             //DateFormat : { xs:string},
             //TimeFormat : { xs:string},

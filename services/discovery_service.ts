@@ -41,7 +41,7 @@ THE SOFTWARE.
  */
 
 import dgram = require('dgram');
-import uuid = require('node-uuid');
+import uuid = require('uuid');
 import xml2js = require('xml2js');
 import { Utils } from '../lib/utils';
 var utils = Utils.utils;
@@ -109,11 +109,13 @@ class DiscoveryService {
                   </wsa:EndpointReference>
                   <d:Types>dn:NetworkVideoTransmitter</d:Types>
                   <d:Scopes>
+                    onvif://www.onvif.org/Profile/T
                     onvif://www.onvif.org/type/video_encoder
                     onvif://www.onvif.org/type/ptz
                     onvif://www.onvif.org/hardware/${encodeURIComponent(this.config.DeviceInformation.Model)}
                     onvif://www.onvif.org/name/${encodeURIComponent(this.config.DeviceInformation.Manufacturer + ' ' + this.config.DeviceInformation.Model)}
-                    onvif://www.onvif.org/location/
+                    onvif://www.onvif.org/location/country/MyCountry
+                    onvif://www.onvif.org/location/city/MyCity
                   </d:Scopes>
                   <d:XAddrs>http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/device_service</d:XAddrs>
                   <d:MetadataVersion>1</d:MetadataVersion>
@@ -122,7 +124,7 @@ class DiscoveryService {
             </SOAP-ENV:Body>
           </SOAP-ENV:Envelope>`;
 
-          let reply_bytes = new Buffer(reply);
+          let reply_bytes = Buffer.from(reply);
 
           // Mac needed replies from a different UDP socket (ie not the bounded socket)
           return reply_socket.send(reply_bytes, 0, reply_bytes.length, rinfo.port, rinfo.address);

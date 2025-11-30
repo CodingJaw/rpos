@@ -11,39 +11,42 @@
   "contributors": [
     {
       "name": "Roger Hardiman"
+    },
+    {
+      "name": "Quedale"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Breeeze/rpos.git"
+    "url": "https://github.com/Quedale/rpos"
   },
   "dependencies": {
-    "body-parser": "1.19.0",
-    "cli-color": "2.0.0",
-    "express": "^4.17.1",
-    "ip": "^1.1.5",
-    "macos-release": "~2.0.0",
+    "body-parser": "1.20.2",
+    "cli-color": "2.0.4",
+    "express": "^4.19.2",
+    "ip": "^2.0.1",
+    "macos-release": "~3.2.0",
     "node-pelcod": "^0.3.0",
-    "node-uuid": "1.4.8",
+    "uuid": "10.0.0",
     "pan-tilt-hat": "^1.2.1",
     "rpi-version": "^1.4.3",
-    "serialport": "^9.1.0",
-    "soap": "https://github.com/BreeeZe/node-soap.git",
+    "serialport": "^12.0.0",
+    "soap": "^1.0.4",
     "tenx-usb-missile-launcher-driver": "^0.2.0",
-    "xml2js": "0.4.23"
+    "xml2js": "0.6.2"
   },
   "devDependencies": {
-    "@types/body-parser": "^1.19.0",
-    "@types/cli-color": "^2.0.0",
-    "@types/express": "^4.17.11",
-    "@types/node": "^13.1.5",
-    "@types/node-uuid": "0.0.28",
-    "@types/xml2js": "^0.4.8",
-    "gulp": "^4.0.2",
+    "@types/body-parser": "^1.19.5",
+    "@types/cli-color": "^2.0.6",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.9",
+    "@types/uuid": "10.0.0",
+    "@types/xml2js": "^0.4.14",
+    "gulp": "^5.0.0",
     "gulp-rename": "^2.0.0",
     "gulp-sourcemaps": "^3.0.0",
-    "gulp-typescript": "^5.0.1",
-    "gulp-zip": "^5.1.0",
-    "typescript": "^4.3.2"
+    "gulp-typescript": "^6.0.0-alpha.1",
+    "gulp-zip": "^6.0.0",
+    "typescript": "^5.5.2"
   }
 }

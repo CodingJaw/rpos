@@ -48,8 +48,8 @@ class SoapService {
       path: '',
       services: null,
       xml: null,
-      wsdlPath: '',
-      onReady: () => { }
+      uri: '',
+      callback: (err: any, res: any) => void {}
     };
 
   }
@@ -62,10 +62,8 @@ class SoapService {
     this.starting();
 
     utils.log.info("Binding %s to http://%s:%s%s", (<TypeConstructor>this.constructor).name, utils.getIpAddress(), this.config.ServicePort, this.serviceOptions.path);
-    var onReady = this.serviceOptions.onReady;
-    this.serviceOptions.onReady = () => {
+    this.serviceOptions.callback = (err: any, res: any) => {
       this._started();
-      onReady();
     };
     this.serviceInstance = soap.listen(this.webserver, this.serviceOptions);
 
@@ -98,7 +96,7 @@ class SoapService {
         // digest = base64 ( sha1 ( nonce + created + onvif_password ) )
         var crypto = require('crypto');
         var pwHash = crypto.createHash('sha1');
-        var rawNonce = new Buffer(nonce || '', 'base64')
+        var rawNonce = Buffer.from(nonce || '', 'base64')
         var combined_data = Buffer.concat([rawNonce,
           Buffer.from(created, 'ascii'), Buffer.from(onvif_password, 'ascii')]);
         pwHash.update(combined_data);
@@ -113,6 +111,9 @@ class SoapService {
       };
     });
 
+    this.serviceInstance.on('soapError', (error: any, eid: string) => {
+      utils.log.error('%s received error %s', (<TypeConstructor>this.constructor).name, eid);
+    });
     this.serviceInstance.log = (type: string, data: any) => {
       if (this.config.logSoapCalls)
         utils.log.debug('%s - Calltype : %s, Data : %s', (<TypeConstructor>this.constructor).name, type, data);

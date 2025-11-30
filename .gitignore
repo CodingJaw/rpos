@@ -212,3 +212,6 @@ lib/**/*.js
 lib/**/*.js.map
 services/*.js
 services/*.js.map
+
+subprojects
+package-lock.json

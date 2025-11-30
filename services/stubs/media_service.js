@@ -25,7 +25,9 @@ exports.MediaService = {
               //SnapshotUri : {xs:boolean},
               //Rotation : {xs:boolean},
               //VideoSourceMode : {xs:boolean},
-              //OSD : {xs:boolean}
+              //OSD : {xs:boolean},
+              //TemporaryOSDText : {xs:boolean},
+              //EXICompression : {xs:boolean}
             //},
             //ProfileCapabilities : { 
               //attributes : {
@@ -140,6 +142,9 @@ exports.MediaService = {
                   //Iris : { xs:float}
                 //},
                 //Focus : { 
+                  //attributes : {
+                    //AFMode : {tt:StringAttrList}
+                  //},
                   //AutoFocusMode : { xs:string},
                   //DefaultSpeed : { xs:float},
                   //NearLimit : { xs:float},
@@ -249,6 +254,9 @@ exports.MediaService = {
               //Name : { xs:string},
               //UseCount : { xs:int}
             //
+              //attributes : {
+                //ViewMode : {xs:string}
+              //},
               //SourceToken : { xs:string},
               //Bounds : { 
                 //attributes : {
@@ -264,7 +272,29 @@ exports.MediaService = {
                   //Degree : { xs:int},
                   //Extension : { }
                 //},
-                //Extension : { }
+                //Extension : { 
+                  //LensDescription : [{ 
+                    //attributes : {
+                      //FocalLength : {xs:float}
+                    //},
+                    //Offset : { 
+                      //attributes : {
+                        //x : {xs:float},
+                        //y : {xs:float}
+                      //}
+                    //},
+                    //Projection : { 
+                      //Angle : { xs:float},
+                      //Radius : { xs:float},
+                      //Transmittance : { xs:float}
+                    //},
+                    //XFactor : { xs:float}
+                  //}],
+                  //SceneOrientation : [{ 
+                    //Mode : { xs:string},
+                    //Orientation : { xs:string}
+                  //}]
+                //}
               //}
             //},
             //AudioSourceConfiguration : { 
@@ -283,6 +313,9 @@ exports.MediaService = {
               //Name : { xs:string},
               //UseCount : { xs:int}
             //
+              //attributes : {
+                //GuaranteedFrameRate : {xs:boolean}
+              //},
               //Encoding : { xs:string},
               //Resolution : { 
                 //Width : { xs:int},
@@ -450,7 +483,9 @@ exports.MediaService = {
               //UseCount : { xs:int}
             //
               //attributes : {
-                //CompressionType : {xs:string}
+                //CompressionType : {xs:string},
+                //GeoLocation : {xs:boolean},
+                //ShapePolygon : {xs:boolean}
               //},
               //PTZStatus : { 
                 //Status : { xs:boolean},
@@ -535,6 +570,9 @@ exports.MediaService = {
               //Name : { xs:string},
               //UseCount : { xs:int}
             //
+              //attributes : {
+                //ViewMode : {xs:string}
+              //},
               //SourceToken : { xs:string},
               //Bounds : { 
                 //attributes : {
@@ -550,7 +588,29 @@ exports.MediaService = {
                   //Degree : { xs:int},
                   //Extension : { }
                 //},
-                //Extension : { }
+                //Extension : { 
+                  //LensDescription : [{ 
+                    //attributes : {
+                      //FocalLength : {xs:float}
+                    //},
+                    //Offset : { 
+                      //attributes : {
+                        //x : {xs:float},
+                        //y : {xs:float}
+                      //}
+                    //},
+                    //Projection : { 
+                      //Angle : { xs:float},
+                      //Radius : { xs:float},
+                      //Transmittance : { xs:float}
+                    //},
+                    //XFactor : { xs:float}
+                  //}],
+                  //SceneOrientation : [{ 
+                    //Mode : { xs:string},
+                    //Orientation : { xs:string}
+                  //}]
+                //}
               //}
             //},
             //AudioSourceConfiguration : { 
@@ -569,6 +629,9 @@ exports.MediaService = {
               //Name : { xs:string},
               //UseCount : { xs:int}
             //
+              //attributes : {
+                //GuaranteedFrameRate : {xs:boolean}
+              //},
               //Encoding : { xs:string},
               //Resolution : { 
                 //Width : { xs:int},
@@ -736,7 +799,9 @@ exports.MediaService = {
               //UseCount : { xs:int}
             //
               //attributes : {
-                //CompressionType : {xs:string}
+                //CompressionType : {xs:string},
+                //GeoLocation : {xs:boolean},
+                //ShapePolygon : {xs:boolean}
               //},
               //PTZStatus : { 
                 //Status : { xs:boolean},
@@ -818,6 +883,9 @@ exports.MediaService = {
               //Name : { xs:string},
               //UseCount : { xs:int}
             //
+              //attributes : {
+                //ViewMode : {xs:string}
+              //},
               //SourceToken : { xs:string},
               //Bounds : { 
                 //attributes : {
@@ -833,7 +901,29 @@ exports.MediaService = {
                   //Degree : { xs:int},
                   //Extension : { }
                 //},
-                //Extension : { }
+                //Extension : { 
+                  //LensDescription : [{ 
+                    //attributes : {
+                      //FocalLength : {xs:float}
+                    //},
+                    //Offset : { 
+                      //attributes : {
+                        //x : {xs:float},
+                        //y : {xs:float}
+                      //}
+                    //},
+                    //Projection : { 
+                      //Angle : { xs:float},
+                      //Radius : { xs:float},
+                      //Transmittance : { xs:float}
+                    //},
+                    //XFactor : { xs:float}
+                  //}],
+                  //SceneOrientation : [{ 
+                    //Mode : { xs:string},
+                    //Orientation : { xs:string}
+                  //}]
+                //}
               //}
             //},
             //AudioSourceConfiguration : { 
@@ -852,6 +942,9 @@ exports.MediaService = {
               //Name : { xs:string},
               //UseCount : { xs:int}
             //
+              //attributes : {
+                //GuaranteedFrameRate : {xs:boolean}
+              //},
               //Encoding : { xs:string},
               //Resolution : { 
                 //Width : { xs:int},
@@ -1019,7 +1112,9 @@ exports.MediaService = {
               //UseCount : { xs:int}
             //
               //attributes : {
-                //CompressionType : {xs:string}
+                //CompressionType : {xs:string},
+                //GeoLocation : {xs:boolean},
+                //ShapePolygon : {xs:boolean}
               //},
               //PTZStatus : { 
                 //Status : { xs:boolean},
@@ -1294,6 +1389,9 @@ exports.MediaService = {
             //Name : { xs:string},
             //UseCount : { xs:int}
           //
+            //attributes : {
+              //ViewMode : {xs:string}
+            //},
             //SourceToken : { xs:string},
             //Bounds : { 
               //attributes : {
@@ -1309,7 +1407,29 @@ exports.MediaService = {
                 //Degree : { xs:int},
                 //Extension : { }
               //},
-              //Extension : { }
+              //Extension : { 
+                //LensDescription : [{ 
+                  //attributes : {
+                    //FocalLength : {xs:float}
+                  //},
+                  //Offset : { 
+                    //attributes : {
+                      //x : {xs:float},
+                      //y : {xs:float}
+                    //}
+                  //},
+                  //Projection : { 
+                    //Angle : { xs:float},
+                    //Radius : { xs:float},
+                    //Transmittance : { xs:float}
+                  //},
+                  //XFactor : { xs:float}
+                //}],
+                //SceneOrientation : [{ 
+                  //Mode : { xs:string},
+                  //Orientation : { xs:string}
+                //}]
+              //}
             //}
           //}]
         //
@@ -1328,6 +1448,9 @@ exports.MediaService = {
             //Name : { xs:string},
             //UseCount : { xs:int}
           //
+            //attributes : {
+              //GuaranteedFrameRate : {xs:boolean}
+            //},
             //Encoding : { xs:string},
             //Resolution : { 
               //Width : { xs:int},
@@ -1470,7 +1593,9 @@ exports.MediaService = {
             //UseCount : { xs:int}
           //
             //attributes : {
-              //CompressionType : {xs:string}
+              //CompressionType : {xs:string},
+              //GeoLocation : {xs:boolean},
+              //ShapePolygon : {xs:boolean}
             //},
             //PTZStatus : { 
               //Status : { xs:boolean},
@@ -1563,6 +1688,9 @@ exports.MediaService = {
             //Name : { xs:string},
             //UseCount : { xs:int}
           //
+            //attributes : {
+              //ViewMode : {xs:string}
+            //},
             //SourceToken : { xs:string},
             //Bounds : { 
               //attributes : {
@@ -1578,7 +1706,29 @@ exports.MediaService = {
                 //Degree : { xs:int},
                 //Extension : { }
               //},
-              //Extension : { }
+              //Extension : { 
+                //LensDescription : [{ 
+                  //attributes : {
+                    //FocalLength : {xs:float}
+                  //},
+                  //Offset : { 
+                    //attributes : {
+                      //x : {xs:float},
+                      //y : {xs:float}
+                    //}
+                  //},
+                  //Projection : { 
+                    //Angle : { xs:float},
+                    //Radius : { xs:float},
+                    //Transmittance : { xs:float}
+                  //},
+                  //XFactor : { xs:float}
+                //}],
+                //SceneOrientation : [{ 
+                  //Mode : { xs:string},
+                  //Orientation : { xs:string}
+                //}]
+              //}
             //}
           //}
         //
@@ -1600,6 +1750,9 @@ exports.MediaService = {
             //Name : { xs:string},
             //UseCount : { xs:int}
           //
+            //attributes : {
+              //GuaranteedFrameRate : {xs:boolean}
+            //},
             //Encoding : { xs:string},
             //Resolution : { 
               //Width : { xs:int},
@@ -1754,7 +1907,9 @@ exports.MediaService = {
             //UseCount : { xs:int}
           //
             //attributes : {
-              //CompressionType : {xs:string}
+              //CompressionType : {xs:string},
+              //GeoLocation : {xs:boolean},
+              //ShapePolygon : {xs:boolean}
             //},
             //PTZStatus : { 
               //Status : { xs:boolean},
@@ -1853,6 +2008,9 @@ exports.MediaService = {
             //Name : { xs:string},
             //UseCount : { xs:int}
           //
+            //attributes : {
+              //GuaranteedFrameRate : {xs:boolean}
+            //},
             //Encoding : { xs:string},
             //Resolution : { 
               //Width : { xs:int},
@@ -1903,6 +2061,9 @@ exports.MediaService = {
             //Name : { xs:string},
             //UseCount : { xs:int}
           //
+            //attributes : {
+              //ViewMode : {xs:string}
+            //},
             //SourceToken : { xs:string},
             //Bounds : { 
               //attributes : {
@@ -1918,7 +2079,29 @@ exports.MediaService = {
                 //Degree : { xs:int},
                 //Extension : { }
               //},
-              //Extension : { }
+              //Extension : { 
+                //LensDescription : [{ 
+                  //attributes : {
+                    //FocalLength : {xs:float}
+                  //},
+                  //Offset : { 
+                    //attributes : {
+                      //x : {xs:float},
+                      //y : {xs:float}
+                    //}
+                  //},
+                  //Projection : { 
+                    //Angle : { xs:float},
+                    //Radius : { xs:float},
+                    //Transmittance : { xs:float}
+                  //},
+                  //XFactor : { xs:float}
+                //}],
+                //SceneOrientation : [{ 
+                  //Mode : { xs:string},
+                  //Orientation : { xs:string}
+                //}]
+              //}
             //}
           //}]
         //
@@ -2044,7 +2227,9 @@ exports.MediaService = {
             //UseCount : { xs:int}
           //
             //attributes : {
-              //CompressionType : {xs:string}
+              //CompressionType : {xs:string},
+              //GeoLocation : {xs:boolean},
+              //ShapePolygon : {xs:boolean}
             //},
             //PTZStatus : { 
               //Status : { xs:boolean},
@@ -2137,6 +2322,9 @@ exports.MediaService = {
           //Name : { xs:string},
           //UseCount : { xs:int}
         //
+          //attributes : {
+            //ViewMode : {xs:string}
+          //},
           //SourceToken : { xs:string},
           //Bounds : { 
             //attributes : {
@@ -2152,7 +2340,29 @@ exports.MediaService = {
               //Degree : { xs:int},
               //Extension : { }
             //},
-            //Extension : { }
+            //Extension : { 
+              //LensDescription : [{ 
+                //attributes : {
+                  //FocalLength : {xs:float}
+                //},
+                //Offset : { 
+                  //attributes : {
+                    //x : {xs:float},
+                    //y : {xs:float}
+                  //}
+                //},
+                //Projection : { 
+                  //Angle : { xs:float},
+                  //Radius : { xs:float},
+                  //Transmittance : { xs:float}
+                //},
+                //XFactor : { xs:float}
+              //}],
+              //SceneOrientation : [{ 
+                //Mode : { xs:string},
+                //Orientation : { xs:string}
+              //}]
+            //}
           //}
         //},
         //ForcePersistence : { xs:boolean}
@@ -2172,6 +2382,9 @@ exports.MediaService = {
           //Name : { xs:string},
           //UseCount : { xs:int}
         //
+          //attributes : {
+            //GuaranteedFrameRate : {xs:boolean}
+          //},
           //Encoding : { xs:string},
           //Resolution : { 
             //Width : { xs:int},
@@ -2318,7 +2531,9 @@ exports.MediaService = {
           //UseCount : { xs:int}
         //
           //attributes : {
-            //CompressionType : {xs:string}
+            //CompressionType : {xs:string},
+            //GeoLocation : {xs:boolean},
+            //ShapePolygon : {xs:boolean}
           //},
           //PTZStatus : { 
             //Status : { xs:boolean},
@@ -2412,6 +2627,9 @@ exports.MediaService = {
         throw NOT_IMPLEMENTED;
         //var GetVideoSourceConfigurationOptionsResponse = { 
           //Options : { 
+            //attributes : {
+              //MaximumNumberOfProfiles : {xs:int}
+            //},
             //BoundsRange : { 
               //XRange : { 
                 //Min : { xs:int},
@@ -2433,13 +2651,18 @@ exports.MediaService = {
             //VideoSourceTokensAvailable : { xs:string},
             //Extension : { 
               //Rotate : { 
+                //attributes : {
+                  //Reboot : {xs:boolean}
+                //},
                 //Mode : { xs:string},
                 //DegreeList : { 
                   //Items : [{ xs:int}]
                 //},
                 //Extension : { }
               //},
-              //Extension : { }
+              //Extension : { 
+                //SceneOrientationMode : [{ xs:string}]
+              //}
             //}
           //}
         //
@@ -2456,6 +2679,9 @@ exports.MediaService = {
         throw NOT_IMPLEMENTED;
         //var GetVideoEncoderConfigurationOptionsResponse = { 
           //Options : { 
+            //attributes : {
+              //GuaranteedFrameRateSupported : {xs:boolean}
+            //},
             //QualityRange : { 
               //Min : { xs:int},
               //Max : { xs:int}
@@ -2638,6 +2864,10 @@ exports.MediaService = {
         throw NOT_IMPLEMENTED;
         //var GetMetadataConfigurationOptionsResponse = { 
           //Options : { 
+            //attributes : {
+              //GeoLocation : {xs:boolean},
+              //MaxContentFilterSize : {xs:int}
+            //},
             //PTZStatusFilterOptions : { 
               //PanTiltStatusSupported : { xs:boolean},
               //ZoomStatusSupported : { xs:boolean},
@@ -2869,6 +3099,9 @@ xs:string
               //Extension : { }
             //},
             //TextString : { 
+              //attributes : {
+                //IsPersistentText : {xs:boolean}
+              //},
               //Type : { xs:string},
               //DateFormat : { xs:string},
               //TimeFormat : { xs:string},
@@ -2940,6 +3173,9 @@ xs:string
               //Extension : { }
             //},
             //TextString : { 
+              //attributes : {
+                //IsPersistentText : {xs:boolean}
+              //},
               //Type : { xs:string},
               //DateFormat : { xs:string},
               //TimeFormat : { xs:string},
@@ -3031,6 +3267,12 @@ xs:string
               //Extension : { }
             //},
             //ImageOption : { 
+              //attributes : {
+                //FormatsSupported : {tt:StringAttrList},
+                //MaxSize : {xs:int},
+                //MaxWidth : {xs:int},
+                //MaxHeight : {xs:int}
+              //},
               //ImagePath : { xs:anyURI},
               //Extension : { }
             //},
@@ -3061,6 +3303,9 @@ xs:string
             //Extension : { }
           //},
           //TextString : { 
+            //attributes : {
+              //IsPersistentText : {xs:boolean}
+            //},
             //Type : { xs:string},
             //DateFormat : { xs:string},
             //TimeFormat : { xs:string},
@@ -3128,6 +3373,9 @@ xs:string
             //Extension : { }
           //},
           //TextString : { 
+            //attributes : {
+              //IsPersistentText : {xs:boolean}
+            //},
             //Type : { xs:string},
             //DateFormat : { xs:string},
             //TimeFormat : { xs:string},

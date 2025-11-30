@@ -286,7 +286,7 @@ class PTZDriver {
       if (this.visca) {
         let data: number[] = [];
         data.push(0x81,0x01,0x06,0x04,0xff);
-        this.stream.write(new Buffer(data));
+        this.stream.write(Buffer.from(data));
       }
       if (this.panTiltHat) {
         this.panTiltHat.goto_home();
@@ -454,7 +454,7 @@ class PTZDriver {
             data.push(0x81,0x01,0x04,0x07,0x00,0xff);
           }
 
-          this.stream.write(new Buffer(data));
+          this.stream.write(Buffer.from(data));
         }
       }
       if (this.panTiltHat) {

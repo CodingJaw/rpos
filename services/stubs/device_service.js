@@ -71,10 +71,12 @@ exports.DeviceService = {
                 //UsernameToken : {xs:boolean},
                 //HttpDigest : {xs:boolean},
                 //RELToken : {xs:boolean},
-                //SupportedEAPMethods : {tds:EAPMethodTypes},
+                //SupportedEAPMethods : {tt:IntList},
                 //MaxUsers : {xs:int},
                 //MaxUserNameLength : {xs:int},
-                //MaxPasswordLength : {xs:int}
+                //MaxPasswordLength : {xs:int},
+                //SecurityPolicies : {tt:StringList},
+                //MaxPasswordHistory : {xs:int}
               //}
             //},
             //System : { 
@@ -89,7 +91,14 @@ exports.DeviceService = {
                 //HttpSystemBackup : {xs:boolean},
                 //HttpSystemLogging : {xs:boolean},
                 //HttpSupportInformation : {xs:boolean},
-                //StorageConfiguration : {xs:boolean}
+                //StorageConfiguration : {xs:boolean},
+                //MaxStorageConfigurations : {xs:int},
+                //GeoLocationEntries : {xs:int},
+                //AutoGeo : {tt:StringAttrList},
+                //StorageTypesSupported : {tt:StringAttrList},
+                //DiscoveryNotSupported : {xs:boolean},
+                //NetworkConfigNotSupported : {xs:boolean},
+                //UserConfigNotSupported : {xs:boolean}
               //}
             //},
             //Misc : { 
@@ -511,6 +520,126 @@ exports.DeviceService = {
         //
         //};
         //return GetWsdlUrlResponse;
+      },
+
+      //var GetPasswordComplexityOptions = { };
+      GetPasswordComplexityOptions : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetPasswordComplexityOptionsResponse = { 
+          //MinLenRange : { 
+            //Min : { xs:int},
+            //Max : { xs:int}
+          //},
+          //UppercaseRange : { 
+            //Min : { xs:int},
+            //Max : { xs:int}
+          //},
+          //NumberRange : { 
+            //Min : { xs:int},
+            //Max : { xs:int}
+          //},
+          //SpecialCharsRange : { 
+            //Min : { xs:int},
+            //Max : { xs:int}
+          //},
+          //BlockUsernameOccurrenceSupported : { xs:boolean},
+          //PolicyConfigurationLockSupported : { xs:boolean}
+        //
+        //};
+        //return GetPasswordComplexityOptionsResponse;
+      },
+
+      //var GetPasswordComplexityConfiguration = { };
+      GetPasswordComplexityConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetPasswordComplexityConfigurationResponse = { 
+          //MinLen : { xs:int},
+          //Uppercase : { xs:int},
+          //Number : { xs:int},
+          //SpecialChars : { xs:int},
+          //BlockUsernameOccurrence : { xs:boolean},
+          //PolicyConfigurationLocked : { xs:boolean}
+        //
+        //};
+        //return GetPasswordComplexityConfigurationResponse;
+      },
+
+      //var SetPasswordComplexityConfiguration = { 
+        //MinLen : { xs:int},
+        //Uppercase : { xs:int},
+        //Number : { xs:int},
+        //SpecialChars : { xs:int},
+        //BlockUsernameOccurrence : { xs:boolean},
+        //PolicyConfigurationLocked : { xs:boolean}
+      //
+      //};
+      SetPasswordComplexityConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var SetPasswordComplexityConfigurationResponse = { };
+        //return SetPasswordComplexityConfigurationResponse;
+      },
+
+      //var GetPasswordHistoryConfiguration = { };
+      GetPasswordHistoryConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetPasswordHistoryConfigurationResponse = { 
+          //Enabled : { xs:boolean},
+          //Length : { xs:int}
+        //
+        //};
+        //return GetPasswordHistoryConfigurationResponse;
+      },
+
+      //var SetPasswordHistoryConfiguration = { 
+        //Enabled : { xs:boolean},
+        //Length : { xs:int}
+      //
+      //};
+      SetPasswordHistoryConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var SetPasswordHistoryConfigurationResponse = { };
+        //return SetPasswordHistoryConfigurationResponse;
+      },
+
+      //var GetAuthFailureWarningOptions = { };
+      GetAuthFailureWarningOptions : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetAuthFailureWarningOptionsResponse = { 
+          //MonitorPeriodRange : { 
+            //Min : { xs:int},
+            //Max : { xs:int}
+          //},
+          //AuthFailureRange : { 
+            //Min : { xs:int},
+            //Max : { xs:int}
+          //}
+        //
+        //};
+        //return GetAuthFailureWarningOptionsResponse;
+      },
+
+      //var GetAuthFailureWarningConfiguration = { };
+      GetAuthFailureWarningConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetAuthFailureWarningConfigurationResponse = { 
+          //Enabled : { xs:boolean},
+          //MonitorPeriod : { xs:int},
+          //MaxAuthFailures : { xs:int}
+        //
+        //};
+        //return GetAuthFailureWarningConfigurationResponse;
+      },
+
+      //var SetAuthFailureWarningConfiguration = { 
+        //Enabled : { xs:boolean},
+        //MonitorPeriod : { xs:int},
+        //MaxAuthFailures : { xs:int}
+      //
+      //};
+      SetAuthFailureWarningConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var SetAuthFailureWarningConfigurationResponse = { };
+        //return SetAuthFailureWarningConfigurationResponse;
       },
 
       //var GetCapabilities = { 
@@ -1160,147 +1289,6 @@ exports.DeviceService = {
         //return SetAccessPolicyResponse;
       },
 
-      //var CreateCertificate = { 
-        //CertificateID : { xs:token},
-        //Subject : { xs:string},
-        //ValidNotBefore : { xs:dateTime},
-        //ValidNotAfter : { xs:dateTime}
-      //
-      //};
-      CreateCertificate : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var CreateCertificateResponse = { 
-          //NvtCertificate : { 
-            //CertificateID : { xs:token},
-            //Certificate : { 
-              //attributes : {
-                //undefined : {}
-              //},
-              //Data : { xs:base64Binary}
-            //}
-          //}
-        //
-        //};
-        //return CreateCertificateResponse;
-      },
-
-      //var GetCertificates = { };
-      GetCertificates : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetCertificatesResponse = { 
-          //NvtCertificate : [{ 
-            //CertificateID : { xs:token},
-            //Certificate : { 
-              //attributes : {
-                //undefined : {}
-              //},
-              //Data : { xs:base64Binary}
-            //}
-          //}]
-        //
-        //};
-        //return GetCertificatesResponse;
-      },
-
-      //var GetCertificatesStatus = { };
-      GetCertificatesStatus : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetCertificatesStatusResponse = { 
-          //CertificateStatus : [{ 
-            //CertificateID : { xs:token},
-            //Status : { xs:boolean}
-          //}]
-        //
-        //};
-        //return GetCertificatesStatusResponse;
-      },
-
-      //var SetCertificatesStatus = { 
-        //CertificateStatus : [{ 
-          //CertificateID : { xs:token},
-          //Status : { xs:boolean}
-        //}]
-      //
-      //};
-      SetCertificatesStatus : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var SetCertificatesStatusResponse = { };
-        //return SetCertificatesStatusResponse;
-      },
-
-      //var DeleteCertificates = { 
-        //CertificateID : [{ xs:token}]
-      //
-      //};
-      DeleteCertificates : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var DeleteCertificatesResponse = { };
-        //return DeleteCertificatesResponse;
-      },
-
-      //var GetPkcs10Request = { 
-        //CertificateID : { xs:token},
-        //Subject : { xs:string},
-        //Attributes : { 
-          //attributes : {
-            //undefined : {}
-          //},
-          //Data : { xs:base64Binary}
-        //}
-      //
-      //};
-      GetPkcs10Request : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetPkcs10RequestResponse = { 
-          //Pkcs10Request : { 
-            //attributes : {
-              //undefined : {}
-            //},
-            //Data : { xs:base64Binary}
-          //}
-        //
-        //};
-        //return GetPkcs10RequestResponse;
-      },
-
-      //var LoadCertificates = { 
-        //NVTCertificate : [{ 
-          //CertificateID : { xs:token},
-          //Certificate : { 
-            //attributes : {
-              //undefined : {}
-            //},
-            //Data : { xs:base64Binary}
-          //}
-        //}]
-      //
-      //};
-      LoadCertificates : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var LoadCertificatesResponse = { };
-        //return LoadCertificatesResponse;
-      },
-
-      //var GetClientCertificateMode = { };
-      GetClientCertificateMode : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetClientCertificateModeResponse = { 
-          //Enabled : { xs:boolean}
-        //
-        //};
-        //return GetClientCertificateModeResponse;
-      },
-
-      //var SetClientCertificateMode = { 
-        //Enabled : { xs:boolean}
-      //
-      //};
-      SetClientCertificateMode : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var SetClientCertificateModeResponse = { };
-        //return SetClientCertificateModeResponse;
-      },
-
       //var GetRelayOutputs = { };
       GetRelayOutputs : function(args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
@@ -1358,215 +1346,6 @@ exports.DeviceService = {
         //
         //};
         //return SendAuxiliaryCommandResponse;
-      },
-
-      //var GetCACertificates = { };
-      GetCACertificates : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetCACertificatesResponse = { 
-          //CACertificate : [{ 
-            //CertificateID : { xs:token},
-            //Certificate : { 
-              //attributes : {
-                //undefined : {}
-              //},
-              //Data : { xs:base64Binary}
-            //}
-          //}]
-        //
-        //};
-        //return GetCACertificatesResponse;
-      },
-
-      //var LoadCertificateWithPrivateKey = { 
-        //CertificateWithPrivateKey : [{ 
-          //CertificateID : { xs:token},
-          //Certificate : { 
-            //attributes : {
-              //undefined : {}
-            //},
-            //Data : { xs:base64Binary}
-          //},
-          //PrivateKey : { 
-            //attributes : {
-              //undefined : {}
-            //},
-            //Data : { xs:base64Binary}
-          //}
-        //}]
-      //
-      //};
-      LoadCertificateWithPrivateKey : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var LoadCertificateWithPrivateKeyResponse = { };
-        //return LoadCertificateWithPrivateKeyResponse;
-      },
-
-      //var GetCertificateInformation = { 
-        //CertificateID : [{ xs:token}]
-      //
-      //};
-      GetCertificateInformation : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetCertificateInformationResponse = { 
-          //CertificateInformation : [{ 
-            //CertificateID : { xs:token},
-            //IssuerDN : { xs:string},
-            //SubjectDN : { xs:string},
-            //KeyUsage : { 
-              //xs:string
-              //attributes : {
-                //Critical : {xs:boolean}
-              //}
-            //
-            //},
-            //ExtendedKeyUsage : { 
-              //xs:string
-              //attributes : {
-                //Critical : {xs:boolean}
-              //}
-            //
-            //},
-            //KeyLength : { xs:int},
-            //Version : { xs:string},
-            //SerialNum : { xs:string},
-            //SignatureAlgorithm : { xs:string},
-            //Validity : { 
-              //From : { xs:dateTime},
-              //Until : { xs:dateTime}
-            //},
-            //Extension : { }
-          //}]
-        //
-        //};
-        //return GetCertificateInformationResponse;
-      },
-
-      //var LoadCACertificates = { 
-        //CACertificate : [{ 
-          //CertificateID : { xs:token},
-          //Certificate : { 
-            //attributes : {
-              //undefined : {}
-            //},
-            //Data : { xs:base64Binary}
-          //}
-        //}]
-      //
-      //};
-      LoadCACertificates : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var LoadCACertificatesResponse = { };
-        //return LoadCACertificatesResponse;
-      },
-
-      //var CreateDot1XConfiguration = { 
-        //Dot1XConfiguration : [{ 
-          //Dot1XConfigurationToken : { xs:string},
-          //Identity : { xs:string},
-          //AnonymousID : { xs:string},
-          //EAPMethod : { xs:int},
-          //CACertificateID : [{ xs:token}],
-          //EAPMethodConfiguration : { 
-            //TLSConfiguration : { 
-              //CertificateID : { xs:token}
-            //},
-            //Password : { xs:string},
-            //Extension : { }
-          //},
-          //Extension : { }
-        //}]
-      //
-      //};
-      CreateDot1XConfiguration : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var CreateDot1XConfigurationResponse = { };
-        //return CreateDot1XConfigurationResponse;
-      },
-
-      //var SetDot1XConfiguration = { 
-        //Dot1XConfiguration : [{ 
-          //Dot1XConfigurationToken : { xs:string},
-          //Identity : { xs:string},
-          //AnonymousID : { xs:string},
-          //EAPMethod : { xs:int},
-          //CACertificateID : [{ xs:token}],
-          //EAPMethodConfiguration : { 
-            //TLSConfiguration : { 
-              //CertificateID : { xs:token}
-            //},
-            //Password : { xs:string},
-            //Extension : { }
-          //},
-          //Extension : { }
-        //}]
-      //
-      //};
-      SetDot1XConfiguration : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var SetDot1XConfigurationResponse = { };
-        //return SetDot1XConfigurationResponse;
-      },
-
-      //var GetDot1XConfiguration = { 
-        //Dot1XConfigurationToken : [{ xs:string}]
-      //
-      //};
-      GetDot1XConfiguration : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetDot1XConfigurationResponse = { 
-          //Dot1XConfiguration : [{ 
-            //Dot1XConfigurationToken : { xs:string},
-            //Identity : { xs:string},
-            //AnonymousID : { xs:string},
-            //EAPMethod : { xs:int},
-            //CACertificateID : [{ xs:token}],
-            //EAPMethodConfiguration : { 
-              //TLSConfiguration : { 
-                //CertificateID : { xs:token}
-              //},
-              //Password : { xs:string},
-              //Extension : { }
-            //},
-            //Extension : { }
-          //}]
-        //
-        //};
-        //return GetDot1XConfigurationResponse;
-      },
-
-      //var GetDot1XConfigurations = { };
-      GetDot1XConfigurations : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetDot1XConfigurationsResponse = { 
-          //Dot1XConfiguration : [{ 
-            //Dot1XConfigurationToken : { xs:string},
-            //Identity : { xs:string},
-            //AnonymousID : { xs:string},
-            //EAPMethod : { xs:int},
-            //CACertificateID : [{ xs:token}],
-            //EAPMethodConfiguration : { 
-              //TLSConfiguration : { 
-                //CertificateID : { xs:token}
-              //},
-              //Password : { xs:string},
-              //Extension : { }
-            //},
-            //Extension : { }
-          //}]
-        //
-        //};
-        //return GetDot1XConfigurationsResponse;
-      },
-
-      //var DeleteDot1XConfiguration = { 
-        //Dot1XConfigurationToken : [{ xs:string}]
-      //
-      //};
-      DeleteDot1XConfiguration : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var DeleteDot1XConfigurationResponse = { };
-        //return DeleteDot1XConfigurationResponse;
       },
 
       //var GetDot11Capabilities = { };
@@ -1787,6 +1566,494 @@ exports.DeviceService = {
         throw NOT_IMPLEMENTED;
         //var DeleteStorageConfigurationResponse = { };
         //return DeleteStorageConfigurationResponse;
+      },
+
+      //var GetGeoLocation = { };
+      GetGeoLocation : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetGeoLocationResponse = { 
+          //Location : [{ 
+            //attributes : {
+              //Entity : {xs:string},
+              //Token : {tt:ReferenceToken},
+              //Fixed : {xs:boolean},
+              //GeoSource : {xs:anyURI},
+              //AutoGeo : {xs:boolean}
+            //},
+            //GeoLocation : { 
+              //attributes : {
+                //lon : {xs:double},
+                //lat : {xs:double},
+                //elevation : {xs:float}
+              //}
+            //},
+            //GeoOrientation : { 
+              //attributes : {
+                //roll : {xs:float},
+                //pitch : {xs:float},
+                //yaw : {xs:float}
+              //}
+            //},
+            //LocalLocation : { 
+              //attributes : {
+                //x : {xs:float},
+                //y : {xs:float},
+                //z : {xs:float}
+              //}
+            //},
+            //LocalOrientation : { 
+              //attributes : {
+                //pan : {xs:float},
+                //tilt : {xs:float},
+                //roll : {xs:float}
+              //}
+            //}
+          //}]
+        //
+        //};
+        //return GetGeoLocationResponse;
+      },
+
+      //var SetGeoLocation = { 
+        //Location : { 
+          //attributes : {
+            //Entity : {xs:string},
+            //Token : {tt:ReferenceToken},
+            //Fixed : {xs:boolean},
+            //GeoSource : {xs:anyURI},
+            //AutoGeo : {xs:boolean}
+          //},
+          //GeoLocation : { 
+            //attributes : {
+              //lon : {xs:double},
+              //lat : {xs:double},
+              //elevation : {xs:float}
+            //}
+          //},
+          //GeoOrientation : { 
+            //attributes : {
+              //roll : {xs:float},
+              //pitch : {xs:float},
+              //yaw : {xs:float}
+            //}
+          //},
+          //LocalLocation : { 
+            //attributes : {
+              //x : {xs:float},
+              //y : {xs:float},
+              //z : {xs:float}
+            //}
+          //},
+          //LocalOrientation : { 
+            //attributes : {
+              //pan : {xs:float},
+              //tilt : {xs:float},
+              //roll : {xs:float}
+            //}
+          //}
+        //}
+      //
+      //};
+      SetGeoLocation : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var SetGeoLocationResponse = { };
+        //return SetGeoLocationResponse;
+      },
+
+      //var DeleteGeoLocation = { 
+        //Location : { 
+          //attributes : {
+            //Entity : {xs:string},
+            //Token : {tt:ReferenceToken},
+            //Fixed : {xs:boolean},
+            //GeoSource : {xs:anyURI},
+            //AutoGeo : {xs:boolean}
+          //},
+          //GeoLocation : { 
+            //attributes : {
+              //lon : {xs:double},
+              //lat : {xs:double},
+              //elevation : {xs:float}
+            //}
+          //},
+          //GeoOrientation : { 
+            //attributes : {
+              //roll : {xs:float},
+              //pitch : {xs:float},
+              //yaw : {xs:float}
+            //}
+          //},
+          //LocalLocation : { 
+            //attributes : {
+              //x : {xs:float},
+              //y : {xs:float},
+              //z : {xs:float}
+            //}
+          //},
+          //LocalOrientation : { 
+            //attributes : {
+              //pan : {xs:float},
+              //tilt : {xs:float},
+              //roll : {xs:float}
+            //}
+          //}
+        //}
+      //
+      //};
+      DeleteGeoLocation : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var DeleteGeoLocationResponse = { };
+        //return DeleteGeoLocationResponse;
+      },
+
+      //var CreateCertificate = { 
+        //CertificateID : { xs:token},
+        //Subject : { xs:string},
+        //ValidNotBefore : { xs:dateTime},
+        //ValidNotAfter : { xs:dateTime}
+      //
+      //};
+      CreateCertificate : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var CreateCertificateResponse = { 
+          //NvtCertificate : { 
+            //CertificateID : { xs:token},
+            //Certificate : { 
+              //attributes : {
+                //undefined : {}
+              //},
+              //Data : { xs:base64Binary}
+            //}
+          //}
+        //
+        //};
+        //return CreateCertificateResponse;
+      },
+
+      //var GetCertificates = { };
+      GetCertificates : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetCertificatesResponse = { 
+          //NvtCertificate : [{ 
+            //CertificateID : { xs:token},
+            //Certificate : { 
+              //attributes : {
+                //undefined : {}
+              //},
+              //Data : { xs:base64Binary}
+            //}
+          //}]
+        //
+        //};
+        //return GetCertificatesResponse;
+      },
+
+      //var GetCertificatesStatus = { };
+      GetCertificatesStatus : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetCertificatesStatusResponse = { 
+          //CertificateStatus : [{ 
+            //CertificateID : { xs:token},
+            //Status : { xs:boolean}
+          //}]
+        //
+        //};
+        //return GetCertificatesStatusResponse;
+      },
+
+      //var SetCertificatesStatus = { 
+        //CertificateStatus : [{ 
+          //CertificateID : { xs:token},
+          //Status : { xs:boolean}
+        //}]
+      //
+      //};
+      SetCertificatesStatus : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var SetCertificatesStatusResponse = { };
+        //return SetCertificatesStatusResponse;
+      },
+
+      //var DeleteCertificates = { 
+        //CertificateID : [{ xs:token}]
+      //
+      //};
+      DeleteCertificates : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var DeleteCertificatesResponse = { };
+        //return DeleteCertificatesResponse;
+      },
+
+      //var GetPkcs10Request = { 
+        //CertificateID : { xs:token},
+        //Subject : { xs:string},
+        //Attributes : { 
+          //attributes : {
+            //undefined : {}
+          //},
+          //Data : { xs:base64Binary}
+        //}
+      //
+      //};
+      GetPkcs10Request : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetPkcs10RequestResponse = { 
+          //Pkcs10Request : { 
+            //attributes : {
+              //undefined : {}
+            //},
+            //Data : { xs:base64Binary}
+          //}
+        //
+        //};
+        //return GetPkcs10RequestResponse;
+      },
+
+      //var LoadCertificates = { 
+        //NVTCertificate : [{ 
+          //CertificateID : { xs:token},
+          //Certificate : { 
+            //attributes : {
+              //undefined : {}
+            //},
+            //Data : { xs:base64Binary}
+          //}
+        //}]
+      //
+      //};
+      LoadCertificates : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var LoadCertificatesResponse = { };
+        //return LoadCertificatesResponse;
+      },
+
+      //var GetClientCertificateMode = { };
+      GetClientCertificateMode : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetClientCertificateModeResponse = { 
+          //Enabled : { xs:boolean}
+        //
+        //};
+        //return GetClientCertificateModeResponse;
+      },
+
+      //var SetClientCertificateMode = { 
+        //Enabled : { xs:boolean}
+      //
+      //};
+      SetClientCertificateMode : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var SetClientCertificateModeResponse = { };
+        //return SetClientCertificateModeResponse;
+      },
+
+      //var GetCACertificates = { };
+      GetCACertificates : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetCACertificatesResponse = { 
+          //CACertificate : [{ 
+            //CertificateID : { xs:token},
+            //Certificate : { 
+              //attributes : {
+                //undefined : {}
+              //},
+              //Data : { xs:base64Binary}
+            //}
+          //}]
+        //
+        //};
+        //return GetCACertificatesResponse;
+      },
+
+      //var LoadCertificateWithPrivateKey = { 
+        //CertificateWithPrivateKey : [{ 
+          //CertificateID : { xs:token},
+          //Certificate : { 
+            //attributes : {
+              //undefined : {}
+            //},
+            //Data : { xs:base64Binary}
+          //},
+          //PrivateKey : { 
+            //attributes : {
+              //undefined : {}
+            //},
+            //Data : { xs:base64Binary}
+          //}
+        //}]
+      //
+      //};
+      LoadCertificateWithPrivateKey : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var LoadCertificateWithPrivateKeyResponse = { };
+        //return LoadCertificateWithPrivateKeyResponse;
+      },
+
+      //var GetCertificateInformation = { 
+        //CertificateID : [{ xs:token}]
+      //
+      //};
+      GetCertificateInformation : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetCertificateInformationResponse = { 
+          //CertificateInformation : [{ 
+            //CertificateID : { xs:token},
+            //IssuerDN : { xs:string},
+            //SubjectDN : { xs:string},
+            //KeyUsage : { 
+              //xs:string
+              //attributes : {
+                //Critical : {xs:boolean}
+              //}
+            //
+            //},
+            //ExtendedKeyUsage : { 
+              //xs:string
+              //attributes : {
+                //Critical : {xs:boolean}
+              //}
+            //
+            //},
+            //KeyLength : { xs:int},
+            //Version : { xs:string},
+            //SerialNum : { xs:string},
+            //SignatureAlgorithm : { xs:string},
+            //Validity : { 
+              //From : { xs:dateTime},
+              //Until : { xs:dateTime}
+            //},
+            //Extension : { }
+          //}]
+        //
+        //};
+        //return GetCertificateInformationResponse;
+      },
+
+      //var LoadCACertificates = { 
+        //CACertificate : [{ 
+          //CertificateID : { xs:token},
+          //Certificate : { 
+            //attributes : {
+              //undefined : {}
+            //},
+            //Data : { xs:base64Binary}
+          //}
+        //}]
+      //
+      //};
+      LoadCACertificates : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var LoadCACertificatesResponse = { };
+        //return LoadCACertificatesResponse;
+      },
+
+      //var CreateDot1XConfiguration = { 
+        //Dot1XConfiguration : [{ 
+          //Dot1XConfigurationToken : { xs:string},
+          //Identity : { xs:string},
+          //AnonymousID : { xs:string},
+          //EAPMethod : { xs:int},
+          //CACertificateID : [{ xs:token}],
+          //EAPMethodConfiguration : { 
+            //TLSConfiguration : { 
+              //CertificateID : { xs:token}
+            //},
+            //Password : { xs:string},
+            //Extension : { }
+          //},
+          //Extension : { }
+        //}]
+      //
+      //};
+      CreateDot1XConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var CreateDot1XConfigurationResponse = { };
+        //return CreateDot1XConfigurationResponse;
+      },
+
+      //var SetDot1XConfiguration = { 
+        //Dot1XConfiguration : [{ 
+          //Dot1XConfigurationToken : { xs:string},
+          //Identity : { xs:string},
+          //AnonymousID : { xs:string},
+          //EAPMethod : { xs:int},
+          //CACertificateID : [{ xs:token}],
+          //EAPMethodConfiguration : { 
+            //TLSConfiguration : { 
+              //CertificateID : { xs:token}
+            //},
+            //Password : { xs:string},
+            //Extension : { }
+          //},
+          //Extension : { }
+        //}]
+      //
+      //};
+      SetDot1XConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var SetDot1XConfigurationResponse = { };
+        //return SetDot1XConfigurationResponse;
+      },
+
+      //var GetDot1XConfiguration = { 
+        //Dot1XConfigurationToken : [{ xs:string}]
+      //
+      //};
+      GetDot1XConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetDot1XConfigurationResponse = { 
+          //Dot1XConfiguration : [{ 
+            //Dot1XConfigurationToken : { xs:string},
+            //Identity : { xs:string},
+            //AnonymousID : { xs:string},
+            //EAPMethod : { xs:int},
+            //CACertificateID : [{ xs:token}],
+            //EAPMethodConfiguration : { 
+              //TLSConfiguration : { 
+                //CertificateID : { xs:token}
+              //},
+              //Password : { xs:string},
+              //Extension : { }
+            //},
+            //Extension : { }
+          //}]
+        //
+        //};
+        //return GetDot1XConfigurationResponse;
+      },
+
+      //var GetDot1XConfigurations = { };
+      GetDot1XConfigurations : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var GetDot1XConfigurationsResponse = { 
+          //Dot1XConfiguration : [{ 
+            //Dot1XConfigurationToken : { xs:string},
+            //Identity : { xs:string},
+            //AnonymousID : { xs:string},
+            //EAPMethod : { xs:int},
+            //CACertificateID : [{ xs:token}],
+            //EAPMethodConfiguration : { 
+              //TLSConfiguration : { 
+                //CertificateID : { xs:token}
+              //},
+              //Password : { xs:string},
+              //Extension : { }
+            //},
+            //Extension : { }
+          //}]
+        //
+        //};
+        //return GetDot1XConfigurationsResponse;
+      },
+
+      //var DeleteDot1XConfiguration = { 
+        //Dot1XConfigurationToken : [{ xs:string}]
+      //
+      //};
+      DeleteDot1XConfiguration : function(args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+        //var DeleteDot1XConfigurationResponse = { };
+        //return DeleteDot1XConfigurationResponse;
       },
 
     }

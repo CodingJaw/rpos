@@ -1,0 +1,31 @@
+﻿{
+  "NetworkAdapters" : ["awdl0","eth0", "wlan0", "en0", "lo"], 
+  "IpAddress" : "127.0.0.1",
+  "ServicePort" : 8082,
+  "Username" : "",
+  "Password" : "",
+  "CameraType" : "usbcam",
+  "CameraDevice" : "/dev/video0",
+  "Codec" : "mjpeg", "CodecComment" : "## h264[default], h265, mjpeg",
+  "RTSPAddress" : "", "//":"Normally left blank. Used to set RTSP Server Address",
+  "RTSPPort" : 8555,
+  "RTSPName" : "mjpeg",
+  "MulticastEnabled"  : false, "MulticastEnabledComment" : "## Multicast is not supported for USB camera",
+  "RTSPMulticastName" : "mjpegm",
+  "MulticastAddress"  : "224.0.0.1",
+  "MulticastPort"     : "10001",
+  "RTSPServer" : 4, "RtspServerComment" : "## Select RTSP Server > 1:RPOS RTSP Server 2:V4L2 RTSP Server by mpromonet (auto selected if MulticastEnabled=true)",
+  "PTZDriver" : "none", "PTZDriverComment": "##192.168.1.15 valid values are none,tenx,pelcod,visca and pan-tilt-hat",
+  "PTZOutput" : "none", "PTZOutputComment": "## values are none (eg Tenx), serial and tcp",
+  "PTZSerialPort" : "/dev/ttyUSB0",
+  "PTZSerialPortSettings" : { "baudRate":2400, "dataBits":8, "parity":"none", "stopBits":1 },
+  "PTZOutputURL": "127.0.0.1:9999",
+  "PTZCameraAddress": 1,
+  "DeviceInformation" : {
+    "Manufacturer" : "Lenovo",
+    "Model" : "P52 Protected",
+    "HardwareId" : "00001"
+  },
+  "logLevel" : 3, "logLevelComment": "## LogLevels are > 1:Error 2:Warning 3:Info 4:Debug",
+  "logSoapCalls" : false
+}

@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<wsdl:definitions xmlns:i0="http://www.onvif.org/ver20/media/wsdl" 
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" 
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:import namespace="http://www.onvif.org/ver20/media/wsdl" location="../wsdl/media2.wsdl"/>
+  <wsdl:service name="Media2Service">
+    <wsdl:port name="Media2" binding="i0:Media2Binding">
+      <soap:address location="http://localhost/onvif/media2_service" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

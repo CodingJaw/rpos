@@ -10,8 +10,8 @@ parser.add_argument('-t', '--type', action='store', default="picam", help='picam
 parser.add_argument('-d', '--device', action='store', default="/dev/video0", help='Video Device eg /dev/video0 or File eg /home/pi/testimage.jpg')
 parser.add_argument('-P', '--rtspport', action='store', default=554, help='Set RTSP port')
 parser.add_argument('-u', '--rtspname', action='store', default="live", help='Set RTSP name')
-parser.add_argument('-W', '--rtspresolutionwidth', action='store', default=1280, help='Set RTSP resolution width')
-parser.add_argument('-H', '--rtspresolutionheight', action='store', default=720, help='Set RTSP resolution height')
+parser.add_argument('-W', '--rtspresolutionwidth', action='store', default=640, help='Set RTSP resolution width')
+parser.add_argument('-H', '--rtspresolutionheight', action='store', default=480, help='Set RTSP resolution height')
 parser.add_argument('-M', '--mjpeg', action='store_true', help='Start with MJPEG codec')
 args = parser.parse_args()
 
@@ -57,8 +57,8 @@ class StreamServer:
 	def __init__(self, type, device, file, port, name, width, height, codec):
 		signal.signal(signal.SIGTERM, self.exit_gracefully)
 		Gst.init(None)
-		self.mainloop = GObject.MainLoop()
-		self.server = GstRtspServer.RTSPServer()
+		self.mainloop = GLib.MainLoop()
+		self.server = GstRtspServer.RTSPOnvifServer()
 		self.mounts = self.server.get_mount_points()
 		
 		self.device = device
@@ -68,14 +68,15 @@ class StreamServer:
 		self.port = port
 		self.name = name
 		
-		self.factory = GstRtspServer.RTSPMediaFactory()
-		# Factory must be shared to allow multiple connections
+		self.factory = GstRtspServer.RTSPOnvifMediaFactory()
+		self.factory.set_media_gtype(GstRtspServer.RTSPOnvifMedia)
+                
+        # Factory must be shared to allow multiple connections
 		self.factory.set_shared(True)
 		self.context_id = 0
 		self.running = False
 		self.stayAwake = True
 		
-		GObject.threads_init()
 		log.info("StreamServer initialized")
 		
 		self.codec_options = {0:"h264", 1:"MJPEG"}
@@ -266,7 +267,7 @@ class StreamServer:
 				self.h264_profile = config["CodecControls"]["h264_profile"]
 		except Exception as e:
 			print ("Unable to read config!")
-			print (e)
+			print (str(e))
 			
 	
 	def launch(self):
@@ -275,25 +276,23 @@ class StreamServer:
 			log.debug("StreamServer.launch called on running instance.")
 			self.stop() # Need to stop any instances first
 		
-		if self.type == "picam":
-                        # This asks the Pi GPU to generate H264 video data which is then passed out via RTSP
-                        # Because the pipleline receives H264 video data (NALs) is not possible to add the clock overlay
-                        # To add a clock, we must get raw video from the GPU and then add the clock, and then pass into the GPU to encode (or use libx264 to encode in software)
-
-			launch_str = 	'( rpicamsrc preview=false bitrate='+str(self.bitrate)+' keyframe-interval='+str(self.h264_i_frame_period)+' drc='+str(self.drc)+ \
-								' image-effect=denoise shutter-speed='+str(self.shutter)+' iso='+str(self.iso)+ \
-								' brightness='+str(self.brightness)+' contrast='+str(self.contrast)+' saturation='+str(self.saturation)+ \
-								' sharpness='+str(self.sharpness)+' awb-mode='+str(self.white_balance)+ ' rotation='+str(self.rotation) + \
-								' hflip='+str(self.horizontal_mirroring)+' vflip='+str(self.vertical_mirroring) + ' video-stabilisation='+str(self.video_stabilisation)
+		if self.device == "picam":
+#			launch_str = 	'( rpicamsrc preview=false ! h264parse'
+			launch_str = '( v4l2src device=/dev/video0 '
+#                        launch_str =    '( v4l2src device=/dev/video0 ! queue ! h264parse '
+#                        launch_str = launch_str + 'bitrate='+str(self.bitrate)+' keyframe-interval='+str(self.h264_i_frame_period)+' drc='+str(self.drc)+ \
+#								' image-effect=denoise shutter-speed='+str(self.shutter)+' iso='+str(self.iso)+ \
+#								' brightness='+str(self.brightness)+' contrast='+str(self.contrast)+' saturation='+str(self.saturation)+ \
+#								' sharpness='+str(self.sharpness)+' awb-mode='+str(self.white_balance)+ ' rotation='+str(self.rotation) + \
+#								' hflip='+str(self.horizontal_mirroring)+' vflip='+str(self.vertical_mirroring) + ' video-stabilisation='+str(self.video_stabilisation)
 								
-			if self.white_balance == 0:
-				log.info("Using custom white balance settings")
-				launch_str = launch_str + 'awb-gain-red='+self.gain_red
-				launch_str = launch_str + 'awb-gain-green='+self.gain_green
-				launch_str = launch_str + 'awb-gain-blue='+self.gain_blue
+			#if self.white_balance == 0:
+			#	log.info("Using custom white balance settings")
+			#	launch_str = launch_str + 'awb-gain-red='+self.gain_red
+			#	launch_str = launch_str + 'awb-gain-green='+self.gain_green
+			#	launch_str = launch_str + 'awb-gain-blue='+self.gain_blue
 			
-			# Completing the pipe
-			# By defining the video/x-264 or image/jpeg, the rpicamsrc module learns what output format to generate
+			#Completing the pipe
 			if self.codec == 0:
 				launch_str = launch_str + ' ! video/x-h264, framerate='+str(self.fps)+'/1, width='+str(self.width)+', height='+str(self.height)+' ! h264parse ! rtph264pay name=pay0 pt=96 )'
 			elif self.codec == 1:
@@ -341,21 +340,77 @@ class StreamServer:
 		else: # usbcam USB Camera
 			# Ignore most of the parameters
 			log.info("USB camera ignored most of the parameters")
-			launch_str = '( v4l2src is-live=true device='+self.device+' brightness='+str(self.brightness)+' contrast='+str(self.contrast)+' saturation='+str(self.saturation)
-			launch_str = launch_str + ' ! queue ! jpegdec ! clockoverlay ! queue ! x264enc tune=zerolatency ! h264parse ! rtph264pay name=pay0 pt=96 )'
+			launch_str = '( v4l2src device='+self.device+' brightness='+str(self.brightness)+' contrast='+str(self.contrast)+' saturation='+str(self.saturation)
+			
+			#RAW INPUT
+			launch_str = launch_str + ' ! video/x-raw,width='+str(self.width)+',height='+str(self.height)+',framerate='+str(self.fps)+'/1,format=YUY2'
+			
+			#MJPEG INPUT
+			#launch_str = launch_str + ' ! image/jpeg,width='+str(self.width)+',height='+str(self.height)+',framerate='+str(self.fps)+'/1'
+			#launch_str = launch_str + ' ! jpegdec'
+			#launch_str = launch_str + ' ! nvjpegdec'
 
-			# TODO .... allow MJPEG output codec
+			#Clock Overlay
+			launch_str = launch_str + ' ! videoconvert'
+			launch_str = launch_str + ' ! clockoverlay '
+
+			#For some reason using the fpsdisplaysink crashes after ~30 seconds
+			#FPS Overlay
+			#launch_str = launch_str + ' ! queue ! fpsdisplaysink ! queue'
+			
+			#Convert input stream before encoding
+			launch_str = launch_str + ' ! videoconvert'
+
+			#Video Encoder
+			#launch_str = launch_str + ' ! omxh264enc target-bitrate='+str(self.bitrate)+' control-rate=variable'
+			#launch_str = launch_str + ' ! libx264enc'
+			#launch_str = launch_str + ' ! x264enc'
+			#launch_str = launch_str + ' ! nvh264enc'
+			#launch_str = launch_str + ' ! avenc_h264_omx'
+			#launch_str = launch_str + ' ! vaapih264enc'
+			#launch_str = launch_str + ' ! vaapiencode_h264'
+			launch_str = launch_str + ' ! openh264enc'
+			#launch_str = launch_str + ' ! mpph264enc'
+			
+			#Video encoder CAPS
+			launch_str = launch_str + ' ! video/x-h264,profile=baseline '
+
+			#Video RTP Pay
+			launch_str = launch_str + '! h264parse ! rtph264pay name=pay0'
+
+			#Audio Channelaudioparse ! audio/x-raw,rate=44100,channels=1 !
+			launch_str = launch_str + " alsasrc ! audio/x-raw,channels=1 ! audioconvert ! audiorate"
+			launch_str = launch_str + ' ! mulawenc ! audio/x-mulaw,channels=1,rate=8000 ! queue ! rtppcmupay name=pay1'
+			
+			#Closing bin
+			launch_str = launch_str + ' )'
+
+			#This works gst-launch-1.0 -e rtspsrc location='rtsp://127.0.0.1:8554/h264' latency=0 onvif-mode=true backchannel=onvif name=d   d. ! queue ! capsfilter caps="application/x-rtp,media=video" ! rtph264depay ! h264parse ! openh264dec ! autovideosink   d. ! queue ! capsfilter caps="application/x-rtp,media=audio" ! decodebin ! audioconvert ! audioresample ! autoaudiosink
 
 		log.debug(launch_str)
 		cam_mutex.acquire()
 		try:
+			log.error("launch : " + launch_str)
 			log.info("Starting service on port "+str(self.port)+" at url /"+self.name)
+
+			back_str = ' capsfilter caps=\"application/x-rtp, media=audio, payload=0, clock-rate=8000, encoding-name=PCMU\" name=depay_backchannel !'
+			back_str = back_str + ' rtppcmudepay !'
+			back_str = back_str + ' mulawdec !'
+			back_str = back_str + ' audioconvert ! audioresample !'
+			back_str = back_str + ' queue !'
+			#back_str = back_str + ' fakesink'
+			back_str = back_str + ' autoaudiosink sync=false'
+			#back_str = back_str + ' omxhdmiaudiosink'
+			back_str = back_str + ' '
+			back_str = "(" + back_str + ")"
+			log.error('back launch : ' + back_str)
+			self.factory.set_backchannel_launch(back_str)
 			self.factory.set_launch(launch_str)
 			self.server.set_service(str(self.port))
+			self.server.set_address('0.0.0.0')
 			self.mounts.add_factory("/"+str(self.name), self.factory)
 			self.context_id = self.server.attach(None)
 			
-			#mainloop.run()
 			self.mainthread = Thread(target=self.mainloop.run)
 			self.mainthread.daemon = True
 			self.mainthread.start()
@@ -366,8 +421,8 @@ class StreamServer:
 		
 	def start(self):
 		p = subprocess.Popen("ps -ax | grep rpos.js", shell=True, stdout=subprocess.PIPE)
-		output = p.stdout.read().decode('utf-8')
-		while self.stayAwake and "rpos" in output:
+		output = p.stdout.read()
+		while self.stayAwake and bytes("node","utf-8") in output:
 			if os.stat(self.file).st_mtime != self.configDate:
 				log.info("Updating stream settings")
 				self.readConfig()

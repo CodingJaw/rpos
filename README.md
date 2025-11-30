@@ -1,3 +1,32 @@
+# Fork
+This fork is to start working on a Profile T feature implementation. Including but not limited to: two-way audio, mjpeg and h265.
+
+WIP - At this point the camera side of work should be functional. I just need a proper Onvif Profile T client to test it.   
+I started working on a Onvif Linux Client for the sole purpose of testing this. [The [OnvifDeviceManager](https://github.com/Quedale/OnvifDeviceManager) repo is a WIP]  
+
+I tried my best to implement the backchannel feature using the python bindings, but there seems to be a bug where a GstBuffer pointer reference is not released and won't get pushed on the backpipe.  
+For now I gave up dealing with the python binding and I'm using my own launch solution.  
+
+Update : I noticed some patch notes related to the new "push-backchannel-sample" signal, which is suposed to resolve this issue. (see comments under function *new_sample* in updated [test-onvif.c](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/blob/main/subprojects/gst-plugins-good/tests/examples/rtsp/test-onvif.c))  
+
+At this point I already have a decently functionnal rtsp launcher which supports backchannel.  
+The sources for "onvifserver" can be found under the [OnvifRtspServer](https://github.com/Quedale/OnvifRtspLauncher) repository.  
+
+# Fork features
+I added a new RtspServer type (#4) configurable in the rposConfig.json file.  
+The new type supports raw v4l and picam CameraDevice. (e.g. "/dev/video0" or "picam")  
+
+"STEP 5.d" was added to the procedures below in order to use it.
+
+No longer using a fork of node-soap and instead using latest version (2024-06).
+Considerable amount of changes were necessary since the new version of node-soap has a hard time finding the appropriate nested nsPrefix.
+Fortunately, the new node-soap version supports manually overriding the nsPrefix. The conversion isn't complete yet. Just barely to keep it functional for now.
+The silver lining for this hassle is that it now supports anyType extensibility. 
+
+Updated to latest WSDL definition (2024-06).
+
+Using the latest version of npm (2024-06).
+
 # rpos
 
 Node.js based ONVIF Camera/NVT software that turns a Raspberry Pi, Windows, Linux or Mac computer into an ONVIF Camera and RTSP Server. It implements the key parts of Profile S and Profile T (http://www.onvif.org). It has special support for the Raspberry Pi Camera and Pimoroni Pan-Tilt HAT.
@@ -7,8 +36,6 @@ RPOS won an award in the 2018 ONVIF Open Source Challenge competition.
 ## History and Contributors
 
 The initial goal (by @BreeeZe) was to provide a ONVIF Media service which is compatible with Synology Surveillance Station to allow the Raspberry Pi to be used as a surveillance camera without the need for adding any custom camera files to your Synology NAS.
-
-This version uses a patched version of the "node-soap" v0.80 library (https://github.com/vpulim/node-soap/releases/tag/v0.8.0) located @ https://github.com/BreeeZe/node-soap
 
 The next goal (by @RogerHardiman) was to implement more of the ONVIF standard so that RPOS could be used with a wide range of CCTV systems and with ONVIF Device Manager and ONVIF Device Tool. Additional ONVIF Soap commands were added including the PTZ Service with backend drivers that control the Raspberry Pi Pan-Tit HAT or emit various RS485 based PTZ protocols including Pelco D and Sony Visca.
 
@@ -61,33 +88,29 @@ Add ‘gpu_mem=128’ in /boot/bootconf.txt and reboot
 
 ### STEP 2 - INSTALL NODEJS AND NPM
 
-[This step was tested in Raspberry Pi OS from June 2021. Older Pis may need some manual steps]
-On the Pi you can install nodejs (ver10) and npm (5.8.0) with this command
+[This step was tested in Raspberry Pi OS from June 2021. Older Pis may need some manual steps]   
+
+</b></b>
+<ins>On the original Raspberry Pi Zero (armv6) node 21 seems to be the last unofficial build supported.</ins>   
+<ins>Unofficial supported build available [here](https://unofficial-builds.nodejs.org/download/release/v21.6.2/).</ins>   
+
+</b></b></b>
+On newer Pi you can install nodejs (ver10) and npm (5.8.0) with this command
 ```
 sudo apt install nodejs npm
 ```
-Next we install 'n', a node version manager and install Node v12 and NPM v6
+Next we install 'n', a node version manager and install Node v21 and NPM v6
 ```
 sudo npm install -g n
-sudo n install 12
+sudo n install 21
 ```
-Log out and log back in for the Path changes to take effect. You should now have Node v12 (check with node -v) and NPM v6 (check with npm -v)
+Log out and log back in for the Path changes to take effect. You should now have Node v21 (check with node -v) and NPM v6 (check with npm -v)
 
-#### STEP 2.1.b - OTHER METHODS
-
-Windows and Mac users can install Node from the nodejs.org web site.
-
-Older Raspbian users (eg those running Jessie) can install NodeJS and NPM with these commands
-
-```
-  curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-  sudo apt-get install nodejs
-```
 
 ### STEP 3 - GET RPOS SOURCE, INSTALL DEPENDENCIES
 
 ```
-git clone https://github.com/BreeeZe/rpos.git
+git clone https://github.com/Quedale/rpos.git
 cd rpos
 npm install
 ```
@@ -111,6 +134,7 @@ RTSP Server options for Pi / Linux:
 1. RPOS comes with a pre-compiled ARM binary for a simple RTSP server. The source is in the ‘cpp’ folder. (option 1)
 1. mpromonet RTSP Server (option 2)
 1. GStreamer RTSP Server (option 3)
+1. Custom Gstreamer Onvif RTSP Server implementation [OnvifRtspServer](https://github.com/Quedale/OnvifRtspLauncher) (Option 4)
 
 RTSP Server options 2 & 3 offer more features, but require additional setup. See instructions below.
 Currently USB camera is only supported by GStreamer RTSP Server
@@ -191,9 +215,48 @@ Note: You do not need to load V4L2 modules when using rpicamsrc (option 3).
 No longer required. Raspberry Pi OS in June 2021 is shipping with GStreamer 1.14 and the Gst RTSP Server library is included
 
 
+#### STEP 5.d - OPTION 4: USING OnvifRtspLauncher (Fork Feature)
+Running *autogen.sh* will pull, configure, and build OnvifRtspServer and its dependencies.  
+OnvifRtspServer currently supports build under x86_64 and RPi4.  
+
+
+##### Build Dependencies
+Note that I don't like depending on sudo. I will eventually get around to identifying and building missing dependencies.
+
+Install the latest build tools from pip and apt
+```
+sudo apt install python3-pip
+python3 -m pip install pip --upgrade
+python3 -m pip install meson
+python3 -m pip install ninja
+sudo apt install libtool
+sudo apt install flex
+sudo apt install bison
+sudo apt install libasound2-dev
+sudo apt install libpulse-dev
+sudo apt install libgudev-1.0-dev
+```
+I'm not sure if this is true for all distros, but this is required to get the new binary in the system's PATH
+```
+export PATH=$PATH:$HOME/.local/bin
+```
+
+Install gettext
+```
+sudo apt-get install gettext
+```
+
+x86_64
+```
+./autogen.sh
+```
+RPi
+```
+./autogen.sh --enable-rpi
+```
+
 ### STEP 6 - EDIT CONFIG
 Go back to the 'rpos' folder
-
 
 Rename or copy `rposConfig.sample-*.json` to `rposConfig.json`. (Choosing the appropriate sample to start with)
 
