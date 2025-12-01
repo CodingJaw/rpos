@@ -26,6 +26,10 @@ interface rposConfig {
   logLevel: number;
   logSoapCalls: Boolean;
   AuthDebug?: boolean;
+  EventRetentionTimeSeconds?: number;
+  EventPollingTimeoutSeconds?: number;
+  AuthReuseEnabled?: boolean;
+  AuthReuseSeconds?: number;
 }
 
 interface PTZSerialPortSettings {

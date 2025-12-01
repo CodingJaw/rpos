@@ -40,6 +40,7 @@ If I've forgotten to put you in the list, please post an Issue Report and I can 
 - Supports Unicast (UDP/TDP) and Multicast using mpromonet's RTSP server
 - Supports Unicast (UDP/TCP) RTSP using GStreamer
 - Works as a PTZ Proxy
+- Provides ONVIF PullPoint event subscription support for WS-BaseNotification clients
 - Also runs on Mac, Windows and other Linux machines but you need to supply your own RTSP server. An example to use ffserver on the Mac is included.
 - USB cameras supported via the GStreamer RTSP server with limited parameters available. Tested with JPEG USB HD camera
 
@@ -218,6 +219,12 @@ This section helps RPOS know where to get live video from
 - Camera Type - Used to help RPOS automatically configure itself. Valid optins are "picam", "usbcam", "filesrc", "testsrc".  'picam' will select the Raspberry Pi camera on the ribbon cable, 'usbcam' will select a USB camera, 'filesrc' will open a JPEG or PNG video file and 'testsrc' can generate video test patterns or render files based on the TestSrc options below
 - CameraDevice - Provides extra information to go with the Camera Type. For 'usbcam' use the Video4Linux address of the camera, eg /dev/video0.  For the 'filesrc' camera type, use the full path and filename of the jpeg or PNG file eg /home/pi/image.jpg. When using the TestSrc pattern "image" or "file", set this to the image or video file to be shown.
 - TestSrc - Extra options when Camera Type is "testsrc". Preset lets you pick 1080p, 720p or 480p resolutions, or you can provide explicit Width/Height values instead. Framerate is independent of other settings and Pattern can be "ball", "colorbars", "image" (overlay a still) or "file" (decode a video file). When not specified, the default resolution and framerate come from the main camera settings and the pattern defaults to "ball".
+#### Event Service and authentication reuse
+- Event PullPoint subscriptions are served from `http://<ip>:<port>/onvif/events_service`. The CreatePullPointSubscription, PullMessages, Renew and Unsubscribe operations are available using the ONVIF Events WSDL included in the `wsdl` folder.
+- `EventRetentionTimeSeconds` controls how long notifications stay buffered for pull-point clients before being discarded.
+- `EventPollingTimeoutSeconds` provides the default timeout applied when clients omit a `Timeout` in PullMessages; clients can supply an ONVIF duration string to override it per call.
+- `AuthReuseEnabled` and `AuthReuseSeconds` let you reuse a recently validated WS-Security token on subsequent calls when clients send requests without repeating the header (helpful for chatty PullMessages loops). Set `AuthReuseEnabled` to `false` to force credentials on every SOAP request.
+- PullMessages responses include WS-BaseNotification `NotificationMessage` entries with `tt:Message` payloads so clients can parse topics and state changes immediately after subscribing.
 #### RTSP Server
 This section helps RPOS know how to share the video via RTSP with viewers
 ...

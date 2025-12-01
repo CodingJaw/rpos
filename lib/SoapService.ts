@@ -56,7 +56,9 @@ class SoapService {
     };
 
     this.lastValidAuthAt = 0;
-    this.recentAuthWindowMs = 5 * 60 * 1000; // 5 minutes
+    const defaultAuthReuseSeconds = 5 * 60;
+    const configuredAuthReuseSeconds = typeof config.AuthReuseSeconds === 'number' ? config.AuthReuseSeconds : defaultAuthReuseSeconds;
+    this.recentAuthWindowMs = configuredAuthReuseSeconds * 1000;
 
   }
 
@@ -86,10 +88,20 @@ class SoapService {
       if (methodName === "GetSystemDateAndTime") return;
 
       if (this.config.Username) {
-        const token = request?.Header?.Security?.UsernameToken;
+        const { token, debug } = this.extractUsernameToken(request);
+        const now = Date.now();
+        const reuseEnabled = this.config.AuthReuseEnabled !== false;
+        const recentlyAuthorized = reuseEnabled && this.lastValidAuthAt && (now - this.lastValidAuthAt < this.recentAuthWindowMs);
+
+        if (!token && recentlyAuthorized) {
+          utils.log.debug(`Reusing previous authentication for ${methodName}`);
+          return;
+        }
+
         if (!token) {
           utils.log.info('No Username/Password (ws-security) supplied for ' + methodName, {
             header: request?.Header,
+            parsedHeaderKeys: debug?.headerKeys,
           });
           throw NOT_IMPLEMENTED;
         }
@@ -98,6 +110,8 @@ class SoapService {
           utils.log.info('Invalid username/password with ' + methodName);
           throw NOT_IMPLEMENTED;
         }
+
+        this.lastValidAuthAt = now;
       }
     });
 
