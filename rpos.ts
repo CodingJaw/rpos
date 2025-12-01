@@ -36,6 +36,7 @@ import DeviceService = require("./services/device_service");
 import MediaService = require("./services/media_service");
 import PTZService = require("./services/ptz_service");
 import ImagingService = require("./services/imaging_service");
+import EventsService = require("./services/events_service");
 import DiscoveryService = require("./services/discovery_service");
 
 import { exit } from "process";
@@ -78,6 +79,11 @@ if (typeof data == 'string' && data.charCodeAt(0) === 0xFEFF) {
 let config = JSON.parse(data);
 
 utils.log.level = <Utils.logLevel>config.logLevel;
+
+if (config.EventRetentionTimeSeconds === undefined) config.EventRetentionTimeSeconds = 30;
+if (config.EventPollingTimeoutSeconds === undefined) config.EventPollingTimeoutSeconds = 5;
+if (config.AuthReuseEnabled === undefined) config.AuthReuseEnabled = true;
+if (config.AuthReuseSeconds === undefined) config.AuthReuseSeconds = 300;
 
 // config.DeviceInformation has Manufacturer, Model, SerialNumer, FirmwareVersion, HardwareId
 // Probe hardware for values, unless they are given in rposConfig.json
@@ -123,6 +129,7 @@ let camera = new Camera(config, webserver);
 let device_service = new DeviceService(config, httpserver, ptz_driver.process_ptz_command);
 let ptz_service = new PTZService(config, httpserver, ptz_driver.process_ptz_command, ptz_driver);
 let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_ptz_command);
+let events_service = new EventsService(config, httpserver);
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
 let discovery_service = new DiscoveryService(config);
 
@@ -130,4 +137,5 @@ device_service.start();
 media_service.start();
 ptz_service.start();
 imaging_service.start();
+events_service.start();
 discovery_service.start();

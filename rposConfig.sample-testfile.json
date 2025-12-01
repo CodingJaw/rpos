@@ -32,5 +32,9 @@
   },
   "logLevel" : 3, "logLevelComment": "## LogLevels are > 1:Error 2:Warning 3:Info 4:Debug",
   "logSoapCalls" : false,
-  "AuthDebug": false, "AuthDebugComment": "## Set to true to enable [AuthDebug] authentication logs"
+  "AuthDebug": false, "AuthDebugComment": "## Set to true to enable [AuthDebug] authentication logs",
+  "AuthReuseEnabled": true, "AuthReuseEnabledComment": "## Allow recent authentication to be reused",
+  "AuthReuseSeconds": 300, "AuthReuseSecondsComment": "## Window (seconds) in which a prior auth remains valid",
+  "EventRetentionTimeSeconds": 30, "EventRetentionTimeComment": "## How long to keep events queued for pull-point clients",
+  "EventPollingTimeoutSeconds": 5, "EventPollingTimeoutComment": "## Default timeout applied to PullMessages when clients omit it"
 }
