@@ -9,6 +9,7 @@ import crypto = require('crypto');
 
 const utils = Utils.utils;
 
+const NAMESPACE = 'http://www.onvif.org/ver10/events/wsdl';
 const PATH = '/onvif/events_service';
 
 interface SubscriptionRecord {
@@ -49,36 +50,55 @@ class EventService extends SoapService {
     return PATH;
   }
 
+  static get namespace() {
+    return NAMESPACE;
+  }
+
   extendService() {
-    const port = this.event_service.EventService.EventPort;
+    const service = this.event_service.EventService;
+    const eventPort = service.EventPort;
+    const pullPoint = service.PullPointSubscription;
+    const subscriptionManager = service.SubscriptionManager;
+    const notificationProducer = service.NotificationProducer;
 
-    port.CreatePullPointSubscription = (args /*, cb, headers*/ ) => {
-      const now = new Date();
-      const termination = this.resolveTermination(args?.InitialTerminationTime, now);
-      const reference = this.generateSubscriptionReference();
+    eventPort.GetServiceCapabilities = () => ({
+      Capabilities: {
+        attributes: {
+          WSSubscriptionPolicySupport: false,
+          WSPullPointSupport: true,
+          WSPausableSubscriptionManagerInterfaceSupport: false,
+          MaxNotificationProducers: 1,
+          MaxPullPoints: 1,
+          PersistentNotificationStorage: false,
+          EventBrokerProtocols: '',
+          MaxEventBrokers: 0
+        }
+      }
+    });
 
-      const subscription: SubscriptionRecord = {
-        reference,
-        createdAt: now,
-        terminationTime: termination,
-        filters: args?.Filter,
-        notifications: [],
-        cursor: 0
-      };
-
-      EventService.registry.set(reference, subscription);
-
-      return {
-        SubscriptionReference: {
-          Address: reference
-        },
-        CurrentTime: now.toISOString(),
-        TerminationTime: termination.toISOString()
-      };
+    eventPort.CreatePullPointSubscription = (args /*, cb, headers*/ ) => {
+      const { response } = this.registerSubscription(args?.Filter, args?.InitialTerminationTime);
+      return response;
     };
 
-    port.PullMessages = (args, _cb, _headers, req) => {
-      const subscription = this.getSubscription(args, _headers, req);
+    eventPort.GetEventProperties = () => ({
+      TopicNamespaceLocation: [],
+      FixedTopicSet: true,
+      TopicSet: {},
+      TopicExpressionDialect: [
+        'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete'
+      ],
+      MessageContentFilterDialect: [],
+      ProducerPropertiesFilterDialect: [],
+      MessageContentSchemaLocation: []
+    });
+
+    eventPort.AddEventBroker = () => ({ });
+    eventPort.DeleteEventBroker = () => ({ });
+    eventPort.GetEventBrokers = () => ({ EventBroker: [] });
+
+    const pullMessages = (args: any, _cb: any, headers: any, req: any) => {
+      const subscription = this.getSubscription(args, headers, req);
 
       const limit = Math.max(0, args?.MessageLimit || 0);
       const available = subscription.notifications.length - subscription.cursor;
@@ -102,8 +122,11 @@ class EventService extends SoapService {
       };
     };
 
-    port.Seek = (args, _cb, _headers, req) => {
-      const subscription = this.getSubscription(args, _headers, req);
+    pullPoint.PullMessages = pullMessages;
+    eventPort.PullMessages = pullMessages;
+
+    const seek = (args: any, _cb: any, headers: any, req: any) => {
+      const subscription = this.getSubscription(args, headers, req);
       const targetTime = args?.UtcTime ? new Date(args.UtcTime) : null;
       if (targetTime && !isNaN(targetTime.getTime())) {
         subscription.cursor = subscription.notifications.findIndex((entry) => entry.timestamp >= targetTime);
@@ -114,16 +137,39 @@ class EventService extends SoapService {
       return {};
     };
 
-    port.SetSynchronizationPoint = (args, _cb, _headers, req) => {
-      const subscription = this.getSubscription(args, _headers, req);
+    pullPoint.Seek = seek;
+    eventPort.Seek = seek;
+
+    const setSyncPoint = (args: any, _cb: any, headers: any, req: any) => {
+      const subscription = this.getSubscription(args, headers, req);
       subscription.cursor = subscription.notifications.length;
       return {};
     };
 
-    port.Unsubscribe = (args, _cb, _headers, req) => {
-      const subscription = this.getSubscription(args, _headers, req);
+    pullPoint.SetSynchronizationPoint = setSyncPoint;
+    eventPort.SetSynchronizationPoint = setSyncPoint;
+
+    const unsubscribe = (args: any, _cb: any, headers: any, req: any) => {
+      const subscription = this.getSubscription(args, headers, req);
       EventService.registry.delete(subscription.reference);
       return {};
+    };
+
+    pullPoint.Unsubscribe = unsubscribe;
+    eventPort.Unsubscribe = unsubscribe;
+
+    subscriptionManager.Renew = (args: any, _cb: any, headers: any, req: any) => {
+      const subscription = this.getSubscription(args, headers, req);
+      const nextTermination = this.resolveTermination(args?.TerminationTime, new Date());
+      subscription.terminationTime = nextTermination;
+      return { TerminationTime: nextTermination.toISOString() };
+    };
+
+    subscriptionManager.Unsubscribe = unsubscribe;
+
+    notificationProducer.Subscribe = (args: any /*, cb, headers*/ ) => {
+      const { response } = this.registerSubscription(args?.Filter, args?.InitialTerminationTime);
+      return response;
     };
   }
 
@@ -161,6 +207,34 @@ class EventService extends SoapService {
       throw this.resourceUnknownFault(reference);
     }
     return subscription;
+  }
+
+  private registerSubscription(filters: any, terminationTime: any, reference?: string) {
+    const now = new Date();
+    const termination = this.resolveTermination(terminationTime, now);
+    const ref = reference || this.generateSubscriptionReference();
+
+    const subscription: SubscriptionRecord = {
+      reference: ref,
+      createdAt: now,
+      terminationTime: termination,
+      filters,
+      notifications: [],
+      cursor: 0
+    };
+
+    EventService.registry.set(ref, subscription);
+
+    return {
+      subscription,
+      response: {
+        SubscriptionReference: {
+          Address: ref
+        },
+        CurrentTime: now.toISOString(),
+        TerminationTime: termination.toISOString()
+      }
+    };
   }
 
   private getSubscriptionReference(args: any, headers: any, req: any): string | undefined {

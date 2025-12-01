@@ -5,7 +5,7 @@ import util = require("util");
 import os = require('os');
 import SoapService = require('../lib/SoapService');
 import MediaService = require("./media_service");
-import EventsService = require("./events_service");
+import EventService = require("./event_service");
 import { Utils }  from '../lib/utils';
 import { Server } from 'http';
 import ip = require('ip');
@@ -174,8 +174,8 @@ class DeviceService extends SoapService {
         },
         //Events
         {
-          Namespace : EventsService.namespace,
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}${EventsService.path}`,
+          Namespace : EventService.namespace,
+          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}${EventService.path}`,
           Capabilities : {
             WSSubscriptionPolicySupport : "false",
             WSPullPointSupport : "true",
