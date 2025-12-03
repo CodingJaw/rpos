@@ -45,7 +45,17 @@ class Media2Service extends MediaService {
   }
 
   started() {
-    //Override started to avoid starting rtsp twice
+    // Override started to avoid starting rtsp twice but still normalize WSDL messages
+    const wsdl = (this as any).serviceInstance?.wsdl;
+    const messages = wsdl?.definitions?.messages;
+    if (!messages) return;
+
+    Object.keys(messages).forEach((fullName: string) => {
+      const simpleName = fullName.includes(':') ? fullName.split(':').pop() : fullName;
+      if (simpleName && !messages[simpleName]) {
+        messages[simpleName] = messages[fullName];
+      }
+    });
   }
 
   getPort() {
