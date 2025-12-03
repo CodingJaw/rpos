@@ -41,8 +41,8 @@ class EventService extends SoapService {
     this.serviceOptions = {
       path: EventService.path,
       services: this.event_service,
-      xml: fs.readFileSync('./wsdl/onvif/wsdl/event.wsdl', 'utf8'),
-      uri: 'wsdl/onvif/wsdl/event.wsdl',
+      xml: fs.readFileSync('./wsdl/onvif/services/event_service.wsdl', 'utf8'),
+      uri: 'wsdl/onvif/services/event_service.wsdl',
       callback: () => console.log('event_service started')
     };
 
