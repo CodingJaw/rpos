@@ -164,6 +164,23 @@ class DeviceIOService extends SoapService {
       });
     });
 
+    app.get('/api/io', (_req: any, res: any) => {
+      res.json({
+        inputs: this.ioState.digitalInputs.map((state, index) => ({
+          id: index,
+          token: `Input${index}`,
+          value: state,
+          state: this.formatState(state)
+        })),
+        outputs: this.ioState.digitalOutputs.map((state, index) => ({
+          id: index,
+          token: `Relay${index}`,
+          value: state,
+          state: this.formatState(state)
+        }))
+      });
+    });
+
     app.get('/api/io/input/:id', (req: any, res: any) => {
       const index = this.parseInputIndex(`Input${req.params.id}`);
       const value = this.ioState.getInput(index);
@@ -189,6 +206,20 @@ class DeviceIOService extends SoapService {
       this.ioState.setOutput(index, value);
       res.json({ index, value, state: this.formatState(value) });
     });
+
+    app.post('/api/io/input/:id', (req: any, res: any) => {
+      const index = this.parseInputIndex(`Input${req.params.id}`);
+      const value = this.parseStatePayload(req.body?.state);
+      this.ioState.setInput(index, value);
+      res.json({ index, value, state: this.formatState(value) });
+    });
+
+    app.post('/api/io/output/:id', (req: any, res: any) => {
+      const index = this.parseRelayIndex(`Relay${req.params.id}`);
+      const value = this.parseStatePayload(req.body?.state);
+      this.ioState.setOutput(index, value);
+      res.json({ index, value, state: this.formatState(value) });
+    });
   }
 
   private parseBoolean(value: any): boolean {
@@ -202,6 +233,20 @@ class DeviceIOService extends SoapService {
 
   private formatState(value: boolean): 'active' | 'inactive' {
     return value ? 'active' : 'inactive';
+  }
+
+  private parseStatePayload(value: any): boolean {
+    if (value === undefined || value === null) {
+      throw new Error('State payload missing; expected "active" or "inactive"');
+    }
+    const normalized = String(value).toLowerCase();
+    if (normalized === 'active' || normalized === 'true' || normalized === '1') {
+      return true;
+    }
+    if (normalized === 'inactive' || normalized === 'false' || normalized === '0') {
+      return false;
+    }
+    throw new Error('Invalid state; expected "active" or "inactive"');
   }
 }
 export = DeviceIOService;
