@@ -6,6 +6,7 @@ import SoapService = require('../lib/SoapService');
 import { Utils } from '../lib/utils';
 import { Server } from 'http';
 import crypto = require('crypto');
+import { IOState } from '../lib/io_state';
 
 const utils = Utils.utils;
 
@@ -29,11 +30,13 @@ interface NotificationRecord {
 class EventService extends SoapService {
   static registry: Map<string, SubscriptionRecord> = new Map();
   event_service: any;
+  ioState: IOState;
 
-  constructor(config: rposConfig, server: Server) {
+  constructor(config: rposConfig, server: Server, ioState: IOState) {
     super(config, server);
 
     this.event_service = require('./stubs/event_service.js').EventService;
+    this.ioState = ioState;
 
     this.serviceOptions = {
       path: EventService.path,
@@ -84,7 +87,17 @@ class EventService extends SoapService {
     eventPort.GetEventProperties = () => ({
       TopicNamespaceLocation: [],
       FixedTopicSet: true,
-      TopicSet: {},
+      TopicSet: {
+        attributes: {
+          'xmlns:tns1': 'http://www.onvif.org/ver10/topics'
+        },
+        'tns1:Device': {
+          'tns1:IO': {
+            'tns1:DigitalInput': {},
+            'tns1:RelayOutput': {}
+          }
+        }
+      },
       TopicExpressionDialect: [
         'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete'
       ],
@@ -173,6 +186,40 @@ class EventService extends SoapService {
     };
   }
 
+  pushIOEvent(type: 'input' | 'output', index: number, value: boolean) {
+    const topicBase = type === 'input' ? 'DigitalInput' : 'RelayOutput';
+    const topic = `tns1:Device/IO/${topicBase}/${index}`;
+
+    const message = {
+      'wsnt:NotificationMessage': {
+        'wsnt:Topic': {
+          attributes: {
+            Dialect: 'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete'
+          },
+          $value: topic
+        },
+        'wsnt:Message': {
+          'tt:Message': {
+            'tt:Data': {
+              'tt:SimpleItem': {
+                attributes: {
+                  Name: 'State',
+                  Value: value.toString()
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+
+    for (const subscription of EventService.registry.values()) {
+      if (this.subscriptionMatchesTopic(subscription, topic)) {
+        subscription.notifications.push({ timestamp: new Date(), message });
+      }
+    }
+  }
+
   queueNotification(reference: string, message: any, timestamp?: Date) {
     const subscription = EventService.registry.get(reference);
     if (!subscription) {
@@ -235,6 +282,40 @@ class EventService extends SoapService {
         TerminationTime: termination.toISOString()
       }
     };
+  }
+
+  private subscriptionMatchesTopic(subscription: SubscriptionRecord, topic: string): boolean {
+    const filters = subscription.filters;
+    if (!filters) return true;
+
+    const expressions: any[] = [];
+    if (filters.TopicExpression) {
+      if (Array.isArray(filters.TopicExpression)) {
+        expressions.push(...filters.TopicExpression);
+      } else {
+        expressions.push(filters.TopicExpression);
+      }
+    }
+    if (filters['wstop:TopicExpression']) {
+      const value = filters['wstop:TopicExpression'];
+      if (Array.isArray(value)) {
+        expressions.push(...value);
+      } else {
+        expressions.push(value);
+      }
+    }
+
+    if (expressions.length === 0) return true;
+
+    return expressions.some((expr) => {
+      const dialect = expr?.attributes?.Dialect || expr?.Dialect;
+      if (dialect && dialect !== 'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete') {
+        return false;
+      }
+      const value = typeof expr === 'string' ? expr : expr?.$value || expr?._ || expr?.['#'] || expr;
+      if (typeof value !== 'string') return false;
+      return value.trim() === topic.trim();
+    });
   }
 
   private getSubscriptionReference(args: any, headers: any, req: any): string | undefined {

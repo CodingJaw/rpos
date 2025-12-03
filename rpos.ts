@@ -40,6 +40,7 @@ import PTZService = require("./services/ptz_service");
 import ImagingService = require("./services/imaging_service");
 import DiscoveryService = require("./services/discovery_service");
 import EventService = require("./services/event_service");
+import { IOState } from "./lib/io_state";
 
 import { exit } from "process";
 
@@ -125,14 +126,23 @@ httpserver.listen(config.ServicePort);
 let ptz_driver = new PTZDriver(config);
 
 let camera = new Camera(config, webserver);
-let deviceio_service = new DeviceIOService(config, httpserver, ptz_driver.process_ptz_command);
+const ioState = new IOState(4, 4);
+let deviceio_service = new DeviceIOService(config, httpserver, ptz_driver.process_ptz_command, ioState);
 let ptz_service = new PTZService(config, httpserver, ptz_driver.process_ptz_command, ptz_driver);
 let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_ptz_command);
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
 let media2_service = new Media2Service(config, httpserver, camera, ptz_service);
 let device_service = new DeviceService(config, httpserver, media_service, ptz_driver.process_ptz_command);
 let discovery_service = new DiscoveryService(config);
-let event_service = new EventService(config, httpserver);
+let event_service = new EventService(config, httpserver, ioState);
+
+ioState.onInputChange((index, value) => {
+  event_service.pushIOEvent("input", index, value);
+});
+
+ioState.onOutputChange((index, value) => {
+  event_service.pushIOEvent("output", index, value);
+});
 
 device_service.start();
 deviceio_service.start();
