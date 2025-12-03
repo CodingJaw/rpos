@@ -45,7 +45,51 @@ class Media2Service extends MediaService {
   }
 
   started() {
-    //Override started to avoid starting rtsp twice
+    // Override started to avoid starting rtsp twice but still normalize WSDL messages
+    const wsdl = (this as any).serviceInstance?.wsdl;
+    const definitions = wsdl?.definitions;
+    const messages = definitions?.messages;
+    if (!messages || !definitions) return;
+
+    // Mirror namespace-prefixed message names onto their simple equivalents
+    Object.keys(messages).forEach((fullName: string) => {
+      const simpleName = fullName.includes(':') ? fullName.split(':').pop() : fullName;
+      if (simpleName && !messages[simpleName]) {
+        messages[simpleName] = messages[fullName];
+      }
+    });
+
+    const addAlias = (alias: string | undefined, targetName: string | undefined) => {
+      if (!alias || !targetName) return;
+      const target = messages[targetName];
+      if (!target) return;
+
+      const simpleTarget = targetName.includes(':') ? targetName.split(':').pop() : targetName;
+
+      if (!messages[alias]) {
+        messages[alias] = target;
+      }
+
+      if (simpleTarget && !messages[simpleTarget]) {
+        messages[simpleTarget] = target;
+      }
+    };
+
+    // Derive aliases from portType operations for request/response names
+    const portTypes = definitions.portTypes || {};
+    Object.values<any>(portTypes).forEach((portType) => {
+      Object.entries<any>(portType?.methods || {}).forEach(([opName, method]) => {
+        const simpleOp = opName.includes(':') ? opName.split(':').pop() : opName;
+        const inputName = method?.input?.$name;
+        const outputName = method?.output?.$name;
+
+        addAlias(simpleOp, inputName);
+        addAlias(simpleOp ? `${simpleOp}Request` : undefined, inputName);
+
+        addAlias(simpleOp, outputName);
+        addAlias(simpleOp ? `${simpleOp}Response` : undefined, outputName);
+      });
+    });
   }
 
   getPort() {
