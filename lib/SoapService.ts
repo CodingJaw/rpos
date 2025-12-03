@@ -100,32 +100,45 @@ class SoapService {
         }
         var user = token.Username;
         var password = (token.Password.$value || token.Password);
-        var nonce = (token.Nonce.$value || token.Nonce); // handle 2 ways to map XML to the javascript data structure
+        var passwordType = (token.Password.attributes && token.Password.attributes.Type) || '';
+        var nonce = (token.Nonce && (token.Nonce.$value || token.Nonce)) || '';
         var created = token.Created;
 
         var onvif_username = this.config.Username;
         var onvif_password = this.config.Password;
 
         if (authDebug) {
-          utils.log.info('Auth debug (%s): received token username=%s password=%s nonce=%s created=%s',
-            methodName, user, password, nonce, created);
+          utils.log.info('Auth debug (%s): received token username=%s password=%s nonce=%s created=%s type=%s',
+            methodName, user, password, nonce, created, passwordType || '');
         }
 
-        // digest = base64 ( sha1 ( nonce + created + onvif_password ) )
-        var crypto = require('crypto');
-        var pwHash = crypto.createHash('sha1');
-        var rawNonce = Buffer.from(nonce || '', 'base64')
-        var combined_data = Buffer.concat([rawNonce,
-          Buffer.from(created, 'ascii'), Buffer.from(onvif_password, 'ascii')]);
-        pwHash.update(combined_data);
-        var generated_password = pwHash.digest('base64');
+        var password_ok = false;
 
-        if (authDebug) {
-          utils.log.info('Auth debug (%s): expected username=%s, configured password=%s, generated digest=%s',
-            methodName, onvif_username, onvif_password, generated_password);
+        // If password type is PasswordText (or nonce/created are missing) fall back to plain comparison
+        var expectsDigest = passwordType.indexOf('PasswordDigest') >= 0 || (nonce && created);
+
+        if (expectsDigest) {
+          // digest = base64 ( sha1 ( nonce + created + onvif_password ) )
+          var crypto = require('crypto');
+          var pwHash = crypto.createHash('sha1');
+          var rawNonce = Buffer.from(nonce || '', 'base64')
+          var combined_data = Buffer.concat([rawNonce,
+            Buffer.from(created, 'ascii'), Buffer.from(onvif_password, 'ascii')]);
+          pwHash.update(combined_data);
+          var generated_password = pwHash.digest('base64');
+
+          if (authDebug) {
+            utils.log.info('Auth debug (%s): expected username=%s, configured password=%s, generated digest=%s',
+              methodName, onvif_username, onvif_password, generated_password);
+          }
+
+          password_ok = (user === onvif_username && password === generated_password);
+        } else {
+          if (authDebug) {
+            utils.log.info('Auth debug (%s): using PasswordText comparison', methodName);
+          }
+          password_ok = (user === onvif_username && password === onvif_password);
         }
-
-        var password_ok = (user === onvif_username && password === generated_password);
 
         if (password_ok == false) {
           utils.log.info('Invalid username/password with ' + methodName);
