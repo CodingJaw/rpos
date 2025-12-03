@@ -116,6 +116,7 @@ class SoapService {
 
         // If password type is PasswordText (or nonce/created are missing) fall back to plain comparison
         var expectsDigest = passwordType.indexOf('PasswordDigest') >= 0 || (nonce && created);
+        var schemeUsed = expectsDigest ? 'PasswordDigest' : 'PasswordText';
 
         if (expectsDigest) {
           // digest = base64 ( sha1 ( nonce + created + onvif_password ) )
@@ -138,6 +139,10 @@ class SoapService {
             utils.log.info('Auth debug (%s): using PasswordText comparison', methodName);
           }
           password_ok = (user === onvif_username && password === onvif_password);
+        }
+
+        if (authDebug) {
+          utils.log.info('Auth debug (%s): scheme=%s type=%s passed=%s', methodName, schemeUsed, passwordType || '', password_ok);
         }
 
         if (password_ok == false) {
