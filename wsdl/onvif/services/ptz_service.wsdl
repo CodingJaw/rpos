@@ -1,11 +1,11 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<wsdl:definitions xmlns:i0="http://www.onvif.org/ver10/ptz/wsdl" 
+<?xml version="1.0" encoding="utf-8" ?>
+<wsdl:definitions xmlns:i0="http://www.onvif.org/ver20/ptz/wsdl"
     xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
     xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
   <wsdl:import namespace="http://www.onvif.org/ver20/ptz/wsdl" location="../wsdl/ptz.wsdl"/>
   <wsdl:service name="PTZService">
     <wsdl:port name="PTZ" binding="i0:PTZBinding">
-      <soap:address location="http://localhost:8000/onvif/ptz_service"/>
+      <soap:address location="http://localhost/onvif/ptz_service" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>
