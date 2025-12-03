@@ -82,6 +82,8 @@ if (typeof data == 'string' && data.charCodeAt(0) === 0xFEFF) {
 let config = JSON.parse(data);
 
 utils.log.level = <Utils.logLevel>config.logLevel;
+config.authDebug = config.authDebug === true;
+config.authDisable = config.authDisable === true;
 
 // config.DeviceInformation has Manufacturer, Model, SerialNumer, FirmwareVersion, HardwareId
 // Probe hardware for values, unless they are given in rposConfig.json
