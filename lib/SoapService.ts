@@ -77,12 +77,25 @@ class SoapService {
       // utils.log.info('received soap header');
       if (methodName === "GetSystemDateAndTime") return;
 
+      const authDebug = !!this.config.authDebug;
+      const authDisabled = !!this.config.authDisable;
+
+      if (authDisabled) {
+        if (authDebug) {
+          utils.log.info('Auth debug (%s): authentication disabled; skipping checks', methodName);
+        }
+        return;
+      }
+
       if (this.config.Username) {
         let token: any = null;
         try {
           token = request.Header.Security.UsernameToken;
         } catch (err) {
           utils.log.info('No Username/Password (ws-security) supplied for ' + methodName);
+          if (authDebug) {
+            utils.log.info('Auth debug (%s): SOAP header received: %j', methodName, request && request.Header);
+          }
           throw NOT_IMPLEMENTED;
         }
         var user = token.Username;
@@ -93,6 +106,11 @@ class SoapService {
         var onvif_username = this.config.Username;
         var onvif_password = this.config.Password;
 
+        if (authDebug) {
+          utils.log.info('Auth debug (%s): received token username=%s password=%s nonce=%s created=%s',
+            methodName, user, password, nonce, created);
+        }
+
         // digest = base64 ( sha1 ( nonce + created + onvif_password ) )
         var crypto = require('crypto');
         var pwHash = crypto.createHash('sha1');
@@ -101,6 +119,11 @@ class SoapService {
           Buffer.from(created, 'ascii'), Buffer.from(onvif_password, 'ascii')]);
         pwHash.update(combined_data);
         var generated_password = pwHash.digest('base64');
+
+        if (authDebug) {
+          utils.log.info('Auth debug (%s): expected username=%s, configured password=%s, generated digest=%s',
+            methodName, onvif_username, onvif_password, generated_password);
+        }
 
         var password_ok = (user === onvif_username && password === generated_password);
 
