@@ -186,6 +186,19 @@ class EventService extends SoapService {
     };
   }
 
+  started() {
+    const wsdl = (this as any).serviceInstance?.wsdl;
+    const messages = wsdl?.definitions?.messages;
+    if (!messages) return;
+
+    Object.keys(messages).forEach((fullName: string) => {
+      const simpleName = fullName.includes(':') ? fullName.split(':').pop() : fullName;
+      if (simpleName && !messages[simpleName]) {
+        messages[simpleName] = messages[fullName];
+      }
+    });
+  }
+
   pushIOEvent(type: 'input' | 'output', index: number, value: boolean) {
     const topicBase = type === 'input' ? 'DigitalInput' : 'RelayOutput';
     const topic = `tns1:Device/IO/${topicBase}/${index}`;
