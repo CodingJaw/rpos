@@ -13,6 +13,8 @@ import PTZService = require('./ptz_service');
 import MediaService = require("./media_service");
 var utils = Utils.utils;
 
+const DEFINITIONS_CLOSE_TAG = '</wsdl:definitions>';
+
 class Media2Service extends MediaService {
   media_service: any;
   camera: Camera;
@@ -35,8 +37,15 @@ class Media2Service extends MediaService {
     this.serviceOptions = {
       path: '/onvif/media2_service',
       services: this.media_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/media2_service.wsdl', 'utf8'),
-      uri: 'wsdl/onvif/services/media2_service.wsdl',
+      xml: this.buildWsdlWithService(
+        './wsdl/onvif/wsdl/media2.wsdl',
+        `\n  <wsdl:service name="Media2Service">\n` +
+        `    <wsdl:port name="Media2" binding="tns:Media2Binding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `  </wsdl:service>\n`
+      ),
+      uri: 'wsdl/onvif/wsdl/media2.wsdl',
       callback: function() {
         utils.log.info('media2_service started');
       }
@@ -50,6 +59,21 @@ class Media2Service extends MediaService {
 
   getPort() {
     return this.media_service.Media2Service.Media2;
+  }
+
+  private serviceAddress() {
+    return `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/media2_service`;
+  }
+
+  private buildWsdlWithService(basePath: string, serviceXml: string) {
+    const baseWsdl = fs.readFileSync(basePath, 'utf8');
+    const insertAt = baseWsdl.lastIndexOf(DEFINITIONS_CLOSE_TAG);
+
+    if (insertAt === -1) {
+      throw new Error(`Invalid WSDL: missing ${DEFINITIONS_CLOSE_TAG} in ${basePath}`);
+    }
+
+    return baseWsdl.slice(0, insertAt) + serviceXml + DEFINITIONS_CLOSE_TAG;
   }
 
   extendService() {

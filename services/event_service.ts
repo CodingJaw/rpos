@@ -12,6 +12,7 @@ const utils = Utils.utils;
 
 const NAMESPACE = 'http://www.onvif.org/ver10/events/wsdl';
 const PATH = '/onvif/events_service';
+const DEFINITIONS_CLOSE_TAG = '</wsdl:definitions>';
 
 interface SubscriptionRecord {
   reference: string;
@@ -41,8 +42,24 @@ class EventService extends SoapService {
     this.serviceOptions = {
       path: EventService.path,
       services: this.event_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/event_service.wsdl', 'utf8'),
-      uri: 'wsdl/onvif/services/event_service.wsdl',
+      xml: this.buildWsdlWithService(
+        './wsdl/onvif/wsdl/event.wsdl',
+        `\n  <wsdl:service name="EventService">\n` +
+        `    <wsdl:port name="EventPort" binding="tns:EventBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="PullPointSubscription" binding="tns:PullPointSubscriptionBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="SubscriptionManager" binding="tns:SubscriptionManagerBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="NotificationProducer" binding="tns:NotificationProducerBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `  </wsdl:service>\n`
+      ),
+      uri: 'wsdl/onvif/wsdl/event.wsdl',
       callback: () => console.log('event_service started')
     };
 
@@ -55,6 +72,21 @@ class EventService extends SoapService {
 
   static get namespace() {
     return NAMESPACE;
+  }
+
+  private serviceAddress() {
+    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${EventService.path}`;
+  }
+
+  private buildWsdlWithService(basePath: string, serviceXml: string) {
+    const baseWsdl = fs.readFileSync(basePath, 'utf8');
+    const insertAt = baseWsdl.lastIndexOf(DEFINITIONS_CLOSE_TAG);
+
+    if (insertAt === -1) {
+      throw new Error(`Invalid WSDL: missing ${DEFINITIONS_CLOSE_TAG} in ${basePath}`);
+    }
+
+    return baseWsdl.slice(0, insertAt) + serviceXml + DEFINITIONS_CLOSE_TAG;
   }
 
   extendService() {
