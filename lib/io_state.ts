@@ -1,3 +1,8 @@
+import { Utils } from './utils';
+import clc = require('cli-color');
+
+const utils = Utils.utils;
+
 export class IOState {
   digitalInputs: boolean[];
   digitalOutputs: boolean[];
@@ -22,6 +27,11 @@ export class IOState {
     this.assertIndex(index, this.digitalInputs.length);
     if (this.digitalInputs[index] === value) return;
     this.digitalInputs[index] = value;
+    utils.log.debug(
+      'Digital input %s set to %s',
+      clc.cyanBright(`#${index}`),
+      value ? clc.greenBright('ON') : clc.redBright('OFF')
+    );
     this.inputListeners.forEach((listener) => listener(index, value));
   }
 
@@ -34,6 +44,11 @@ export class IOState {
     this.assertIndex(index, this.digitalOutputs.length);
     if (this.digitalOutputs[index] === value) return;
     this.digitalOutputs[index] = value;
+    utils.log.debug(
+      'Digital output %s set to %s',
+      clc.magentaBright(`#${index}`),
+      value ? clc.greenBright('ON') : clc.redBright('OFF')
+    );
     this.outputListeners.forEach((listener) => listener(index, value));
   }
 
