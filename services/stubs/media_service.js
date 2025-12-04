@@ -1263,15 +1263,26 @@ exports.MediaService = {
         //return RemoveAudioSourceConfigurationResponse;
       },
 
-      //var AddPTZConfiguration = { 
+      //var AddPTZConfiguration = {
         //ProfileToken : { xs:string},
         //ConfigurationToken : { xs:string}
       //
       //};
       AddPTZConfiguration : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var AddPTZConfigurationResponse = { };
-        //return AddPTZConfigurationResponse;
+        if (!args || !args.ProfileToken || !args.ConfigurationToken) {
+          return {
+            Fault: {
+              Code: {
+                Value: "soap:Client"
+              },
+              Reason: {
+                Text: "ProfileToken and ConfigurationToken are required"
+              }
+            }
+          };
+        }
+
+        return {};
       },
 
       //var RemovePTZConfiguration = { 
