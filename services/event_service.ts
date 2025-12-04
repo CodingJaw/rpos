@@ -32,6 +32,8 @@ class EventService extends SoapService {
   static registry: Map<string, SubscriptionRecord> = new Map();
   event_service: any;
   ioState: IOState;
+  private warnedNoSubscribers = false;
+  private pendingNotifications: NotificationRecord[] = [];
 
   constructor(config: rposConfig, server: Server, ioState: IOState) {
     super(config, server);
@@ -64,6 +66,7 @@ class EventService extends SoapService {
     };
 
     this.extendService();
+    this.ensureAutoSubscription();
   }
 
   static get path() {
@@ -245,10 +248,25 @@ class EventService extends SoapService {
       }
     };
 
+    if (EventService.registry.size === 0) {
+      if (!this.warnedNoSubscribers) {
+        utils.log.warn('IO event raised without any subscriptions; buffering until a consumer subscribes.');
+        this.warnedNoSubscribers = true;
+      }
+      this.bufferNotification(message);
+      return;
+    }
+
+    let delivered = false;
     for (const subscription of EventService.registry.values()) {
       if (this.subscriptionMatchesTopic(subscription, topic)) {
         subscription.notifications.push({ timestamp: new Date(), message });
+        delivered = true;
       }
+    }
+
+    if (!delivered) {
+      this.bufferNotification(message, topic);
     }
   }
 
@@ -304,6 +322,8 @@ class EventService extends SoapService {
 
     EventService.registry.set(ref, subscription);
 
+    this.flushPendingNotifications(subscription);
+
     return {
       subscription,
       response: {
@@ -348,6 +368,45 @@ class EventService extends SoapService {
       if (typeof value !== 'string') return false;
       return value.trim() === topic.trim();
     });
+  }
+
+  private ensureAutoSubscription() {
+    if (this.config.AutoSubscribeIOEvents === false) {
+      utils.log.warn('Auto-subscription for IO events is disabled; ONVIF clients must create their own subscriptions.');
+      return;
+    }
+
+    const reference = `${this.serviceAddress()}?subscription=auto`;
+    this.registerSubscription(undefined, new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), reference);
+    utils.log.info('Created default IO event subscription at %s', reference);
+  }
+
+  private bufferNotification(message: any, topic?: string) {
+    const record = { timestamp: new Date(), message } as NotificationRecord;
+    this.pendingNotifications.push(record);
+    if (this.pendingNotifications.length > 100) {
+      this.pendingNotifications.shift();
+    }
+
+    if (topic) {
+      utils.log.debug('Buffered IO notification for topic %s until a subscription is available.', topic);
+    }
+  }
+
+  private flushPendingNotifications(subscription: SubscriptionRecord) {
+    if (this.pendingNotifications.length === 0) return;
+
+    const remaining: NotificationRecord[] = [];
+    for (const entry of this.pendingNotifications) {
+      const topic = entry.message?.['wsnt:NotificationMessage']?.['wsnt:Topic']?.$value;
+      if (!topic || this.subscriptionMatchesTopic(subscription, topic)) {
+        subscription.notifications.push(entry);
+      } else {
+        remaining.push(entry);
+      }
+    }
+
+    this.pendingNotifications = remaining;
   }
 
   private getSubscriptionReference(args: any, headers: any, req: any): string | undefined {

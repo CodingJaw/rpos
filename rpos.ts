@@ -113,6 +113,7 @@ if (config.DeviceInformation.FirmwareVersion == undefined) config.DeviceInformat
 if (config.DeviceInformation.HardwareId == undefined) config.DeviceInformation.HardwareId = '1001';
 if (config.Codec == undefined) config.Codec = "h264";
 if (config.FPS == undefined) config.FPS = 10;
+if (config.AutoSubscribeIOEvents === undefined) config.AutoSubscribeIOEvents = true;
 
 utils.setConfig(config);
 utils.testIpAddress();

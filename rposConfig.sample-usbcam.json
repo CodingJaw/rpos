@@ -27,6 +27,7 @@
   },
   "logLevel" : 3, "logLevelComment": "## LogLevels are > 1:Error 2:Warning 3:Info 4:Debug",
   "logSoapCalls" : false,
+  "AutoSubscribeIOEvents" : true, "AutoSubscribeIOEventsComment" : "## Enable a default ONVIF IO event subscription so triggers are buffered before NVRs subscribe",
   "authDebug" : false,
   "authDisable" : false
 }

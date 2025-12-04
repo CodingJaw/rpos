@@ -26,6 +26,7 @@ interface rposConfig {
   DeviceInformation: DeviceInformation;
   logLevel: number;
   logSoapCalls: Boolean;
+  AutoSubscribeIOEvents?: boolean;
   authDebug?: boolean;
   authDisable?: boolean;
 }
