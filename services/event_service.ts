@@ -11,7 +11,7 @@ import { IOState } from '../lib/io_state';
 const utils = Utils.utils;
 
 const NAMESPACE = 'http://www.onvif.org/ver10/events/wsdl';
-const PATH = '/onvif/events_service';
+const PATH = '/onvif/event_service';
 const DEFINITIONS_CLOSE_TAG = '</wsdl:definitions>';
 
 interface SubscriptionRecord {

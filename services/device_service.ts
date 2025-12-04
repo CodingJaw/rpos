@@ -316,7 +316,7 @@ class DeviceService extends SoapService {
       }
       if (category == undefined || category == "All" || category == "Events") {
         GetCapabilitiesResponse.Capabilities["tt:Events"] = {
-          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/events_service`,
+          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/event_service`,
           WSSubscriptionPolicySupport: false,
           WSPullPointSupport: true,
           WSPausableSubscriptionManagerInterfaceSupport: false
