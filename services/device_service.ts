@@ -7,6 +7,7 @@ import SoapService = require('../lib/SoapService');
 import MediaService = require("./media_service");
 import EventService = require("./event_service");
 import { Utils }  from '../lib/utils';
+import { ServiceRegistry, ServiceEntry } from '../lib/service_registry';
 import { Server } from 'http';
 import ip = require('ip');
 var utils = Utils.utils;
@@ -18,13 +19,15 @@ class DeviceService extends SoapService {
   device_service: any;
   callback: any;
   media_service: MediaService;
+  registry: ServiceRegistry;
 
-  constructor(config: rposConfig, server: Server, media_service: MediaService,callback) {
+  constructor(config: rposConfig, server: Server, media_service: MediaService,callback: any, registry?: ServiceRegistry) {
     super(config, server);
 
     this.device_service = require('./stubs/device_service.js').DeviceService;
     this.callback = callback;
     this.media_service = media_service;
+    this.registry = registry || new ServiceRegistry();
 
     this.serviceOptions = {
       path: DeviceService.path,
@@ -106,144 +109,13 @@ class DeviceService extends SoapService {
 
     port.GetServices = (args /*, cb, headers*/) => {
       // ToDo. Check value of args.IncludeCapability
+      var entries = this.registry.getServices();
+      if (entries.length === 0) {
+        entries = this.buildDefaultServices();
+      }
+
       var GetServicesResponse = {
-        Service : [
-        {
-          Namespace : DeviceService.namespace,
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}${DeviceService.path}`,
-          Capabilities : {
-            Network : {
-              IPFilter : "true",
-              ZeroConfiguration : "true",
-              IPVersion6 : "true",
-              DynDNS : "true",
-              Dot11Configuration : "false",
-              Dot1XConfigurations : "0",
-              HostnameFromDHCP : "true",
-              NTP : "1",
-              DHCPv6 : "true"
-            },
-            Security : {
-              "TLS1.0" : "true",
-              "TLS1.1" : "true",
-              "TLS1.2" : "true",
-              OnboardKeyGeneration : "false",
-              AccessPolicyConfig : "false",
-              DefaultAccessPolicy : "true",
-              Dot1X : "false",
-              RemoteUserHandling : "false",
-              "X.509Token" : "false",
-              SAMLToken : "false",
-              KerberosToken : "false",
-              UsernameToken : "true",
-              HttpDigest : "true",
-              RELToken : "false",
-              SupportedEAPMethods : "0",
-              MaxUsers : "32",
-              MaxUserNameLength : "32",
-              MaxPasswordLength : "16"
-            },
-            System : {
-              DiscoveryResolve : "false",
-              DiscoveryBye : "true",
-              RemoteDiscovery : "false",
-              SystemBackup : "false",
-              SystemLogging : "true",
-              FirmwareUpgrade : "true",
-              HttpFirmwareUpgrade : "true",
-              HttpSystemBackup : "false",
-              HttpSystemLogging : "false",
-              HttpSupportInformation : "false",
-              StorageConfiguration : "true",
-              MaxStorageConfigurations : "8"
-            }
-          },
-          Version : { 
-            Major : 18,
-            Minor : 12,
-          }
-        },
-        { 
-          Namespace : MediaService.namespace,
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}${MediaService.path}`,
-          Capabilities : this.media_service.getPort().GetServiceCapabilities(),
-          Version : { 
-            Major : 2,
-            Minor : 60,
-          }
-        },
-        //Events
-        {
-          Namespace : EventService.namespace,
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}${EventService.path}`,
-          Capabilities : {
-            WSSubscriptionPolicySupport : "false",
-            WSPullPointSupport : "true",
-            WSPausableSubscriptionManagerInterfaceSupport : "false"
-          },
-          Version : {
-            Major : 20,
-            Minor : 12,
-          }
-        },
-        {
-          Namespace : "http://www.onvif.org/ver20/imaging/wsdl",
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/imaging_service`,
-          Capabilities : {
-            ImageStabilization : "false"
-          },
-          Version : {
-            Major : 16,
-            Minor : 6,
-          }
-        },
-        {
-          Namespace : "http://www.onvif.org/ver10/deviceIO/wsdl",
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/deviceio_service`,
-          Capabilities : {
-            VideoSources : "1",
-            VideoOutputs : "0",
-            AudioSources : "1",
-            AudioOutputs : "1",
-            RelayOutputs : "4",
-            DigitalInputs : "4",
-            SerialPorts : "1",
-            DigitalInputOptions : "true"
-          },
-          Version : {
-            Major : 16,
-            Minor : 12,
-          }
-        },
-        //analytics
-        //recording
-        //search
-        //replay
-        //media
-        { 
-          Namespace : "http://www.onvif.org/ver20/ptz/wsdl",
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/ptz_service`,
-          Version : { 
-            Major : 2,
-            Minor : 5,
-          },
-        },
-        { 
-          Namespace : "http://www.onvif.org/ver20/media/wsdl",
-          XAddr : `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media2_service`,
-          Capabilities : { 
-            SnapshotUri : "true",
-            Rotation : "false",
-            VideoSourceMode : "false",
-            OSD : "true",
-            Mask : "true",
-            SourceMask : "true"
-          },
-          Version : { 
-            Major : 16,
-            Minor : 12,
-          }
-        }]
+        Service: entries
       };
 
       return GetServicesResponse;
@@ -703,6 +575,150 @@ class DeviceService extends SoapService {
       };
       return GetCertificatesStatusResponse;
     };
+  }
+
+  private buildDefaultServices(): ServiceEntry[] {
+    var xaddrBase = "http://" + utils.getIpAddress() + ":" + this.config.ServicePort;
+    var services: ServiceEntry[] = [];
+
+    services.push({
+      Namespace: DeviceService.namespace,
+      XAddr: xaddrBase + DeviceService.path,
+      Capabilities: {
+        Network: {
+          IPFilter: "true",
+          ZeroConfiguration: "true",
+          IPVersion6: "true",
+          DynDNS: "true",
+          Dot11Configuration: "false",
+          Dot1XConfigurations: "0",
+          HostnameFromDHCP: "true",
+          NTP: "1",
+          DHCPv6: "true"
+        },
+        Security: {
+          "TLS1.0": "true",
+          "TLS1.1": "true",
+          "TLS1.2": "true",
+          OnboardKeyGeneration: "false",
+          AccessPolicyConfig: "false",
+          DefaultAccessPolicy: "true",
+          Dot1X: "false",
+          RemoteUserHandling: "false",
+          "X.509Token": "false",
+          SAMLToken: "false",
+          KerberosToken: "false",
+          UsernameToken: "true",
+          HttpDigest: "true",
+          RELToken: "false",
+          SupportedEAPMethods: "0",
+          MaxUsers: "32",
+          MaxUserNameLength: "32",
+          MaxPasswordLength: "16"
+        },
+        System: {
+          DiscoveryResolve: "false",
+          DiscoveryBye: "true",
+          RemoteDiscovery: "false",
+          SystemBackup: "false",
+          SystemLogging: "true",
+          FirmwareUpgrade: "true",
+          HttpFirmwareUpgrade: "true",
+          HttpSystemBackup: "false",
+          HttpSystemLogging: "false",
+          HttpSupportInformation: "false",
+          StorageConfiguration: "true",
+          MaxStorageConfigurations: "8"
+        }
+      },
+      Version: {
+        Major: 18,
+        Minor: 12
+      }
+    });
+
+    services.push({
+      Namespace: MediaService.namespace,
+      XAddr: xaddrBase + MediaService.path,
+      Capabilities: this.media_service.getPort().GetServiceCapabilities(),
+      Version: {
+        Major: 2,
+        Minor: 60
+      }
+    });
+
+    services.push({
+      Namespace: EventService.namespace,
+      XAddr: xaddrBase + EventService.path,
+      Capabilities: {
+        WSSubscriptionPolicySupport: "false",
+        WSPullPointSupport: "true",
+        WSPausableSubscriptionManagerInterfaceSupport: "false"
+      },
+      Version: {
+        Major: 20,
+        Minor: 12
+      }
+    });
+
+    services.push({
+      Namespace: "http://www.onvif.org/ver20/imaging/wsdl",
+      XAddr: xaddrBase + '/onvif/imaging_service',
+      Capabilities: {
+        ImageStabilization: "false"
+      },
+      Version: {
+        Major: 16,
+        Minor: 6
+      }
+    });
+
+    services.push({
+      Namespace: "http://www.onvif.org/ver10/deviceIO/wsdl",
+      XAddr: xaddrBase + '/onvif/deviceio_service',
+      Capabilities: {
+        VideoSources: "1",
+        VideoOutputs: "0",
+        AudioSources: "1",
+        AudioOutputs: "1",
+        RelayOutputs: "4",
+        DigitalInputs: "4",
+        SerialPorts: "1",
+        DigitalInputOptions: "true"
+      },
+      Version: {
+        Major: 16,
+        Minor: 12
+      }
+    });
+
+    services.push({
+      Namespace: "http://www.onvif.org/ver20/ptz/wsdl",
+      XAddr: xaddrBase + '/onvif/ptz_service',
+      Version: {
+        Major: 2,
+        Minor: 5
+      }
+    });
+
+    services.push({
+      Namespace: "http://www.onvif.org/ver20/media/wsdl",
+      XAddr: xaddrBase + '/onvif/media2_service',
+      Capabilities: {
+        SnapshotUri: "true",
+        Rotation: "false",
+        VideoSourceMode: "false",
+        OSD: "true",
+        Mask: "true",
+        SourceMask: "true"
+      },
+      Version: {
+        Major: 16,
+        Minor: 12
+      }
+    });
+
+    return services;
   }
 }
 export = DeviceService;
