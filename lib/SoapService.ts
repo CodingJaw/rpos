@@ -74,6 +74,7 @@ class SoapService {
     soap.Server.prototype._process = function() {
       const args = Array.prototype.slice.call(arguments);
       const reqOrUrl = args[1];
+      const inputXml = args[0];
 
       let parsedUrl: url.UrlWithParsedQuery | null = null;
       try {
@@ -83,6 +84,23 @@ class SoapService {
         }
       } catch (err) {
         parsedUrl = null;
+      }
+
+      let actionHint: string | null = null;
+      try {
+        const parsed = typeof inputXml === 'string' && this.wsdl?.xmlToObject ? this.wsdl.xmlToObject(inputXml) : null;
+        const actionRaw = parsed?.Header?.Action || parsed?.Header?.['wsa:Action'] || parsed?.Header?.wsa__Action;
+        const action = typeof actionRaw === 'string' ? actionRaw : actionRaw?.$value || actionRaw?._; 
+
+        if (typeof action === 'string') {
+          if (action.indexOf('SubscriptionManager') !== -1 || action.indexOf('/Renew') !== -1 || action.indexOf('/Unsubscribe') !== -1) {
+            actionHint = 'SubscriptionManager';
+          } else if (action.indexOf('PullPointSubscription') !== -1 || action.indexOf('/PullMessages') !== -1) {
+            actionHint = 'PullPointSubscription';
+          }
+        }
+      } catch (err) {
+        actionHint = null;
       }
 
       const hasSubscriptionQuery = parsedUrl?.query && parsedUrl.query.subscription !== undefined;
@@ -95,17 +113,23 @@ class SoapService {
           if (!ports || !ports.PullPointSubscription) continue;
 
           const originalPorts = service.ports;
-          const prioritized = ['PullPointSubscription', 'SubscriptionManager'];
+          const prioritized = [] as string[];
+          if (actionHint) prioritized.push(actionHint);
+          prioritized.push('PullPointSubscription', 'SubscriptionManager');
+
+          const seen: Record<string, boolean> = {};
           const reordered: any = {};
 
           for (const key of prioritized) {
-            if (ports[key]) {
+            if (ports[key] && !seen[key]) {
               reordered[key] = ports[key];
+              seen[key] = true;
             }
           }
           for (const key of Object.keys(ports)) {
-            if (!reordered[key]) {
+            if (!seen[key]) {
               reordered[key] = ports[key];
+              seen[key] = true;
             }
           }
 
