@@ -99,11 +99,19 @@ class EventService extends SoapService {
   }
 
   extendService() {
-    const service = this.event_service.EventService;
-    const eventPort = service.EventPort;
-    const pullPoint = service.PullPointSubscription;
-    const subscriptionManager = service.SubscriptionManager;
-    const notificationProducer = service.NotificationProducer;
+    const service = this.event_service.EventService || this.event_service;
+    if (!service) {
+      throw new Error('EventService stub is missing the EventService definition');
+    }
+
+    const eventPort = service.EventPort || (service.EventPort = {});
+    const pullPoint = service.PullPointSubscription || (service.PullPointSubscription = {});
+    const subscriptionManager = service.SubscriptionManager || (service.SubscriptionManager = {});
+    const notificationProducer = service.NotificationProducer || (service.NotificationProducer = {});
+
+    if (!eventPort || !pullPoint || !subscriptionManager || !notificationProducer) {
+      throw new Error('EventService stub is missing one or more ports');
+    }
 
     eventPort.GetServiceCapabilities = () => ({
       Capabilities: {
