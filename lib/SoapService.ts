@@ -3,6 +3,7 @@
 import fs = require("fs");
 import { Utils }  from './utils';
 import { Server } from 'http';
+import url = require('url');
 var soap = <any>require('soap');
 var utils = Utils.utils;
 
@@ -36,6 +37,7 @@ class SoapService {
   serviceOptions: SoapServiceOptions;
   startedCallbacks: (() => void)[];
   isStarted: boolean;
+  private static subscriptionBindingPatched = false;
 
   constructor(config: rposConfig, server: Server) {
     this.webserver = server;
@@ -43,6 +45,8 @@ class SoapService {
     this.serviceInstance = null;
     this.startedCallbacks = [];
     this.isStarted = false;
+
+    this.ensureSubscriptionBindingPatch();
 
     this.serviceOptions = {
       path: '',
@@ -57,6 +61,56 @@ class SoapService {
   starting() { }
 
   started() { }
+
+  private ensureSubscriptionBindingPatch() {
+    if (SoapService.subscriptionBindingPatched) return;
+    SoapService.subscriptionBindingPatched = true;
+
+    if (!soap || !soap.Server || typeof soap.Server.prototype._process !== 'function') {
+      return;
+    }
+
+    const originalProcess = soap.Server.prototype._process;
+    soap.Server.prototype._process = function(input: any, URL: any, callback: any) {
+      const parsedUrl = url.parse(URL, true);
+      const hasSubscriptionQuery = parsedUrl.query && parsedUrl.query.subscription !== undefined;
+
+      let restorePorts: { service: any; ports: any }[] = [];
+      if (hasSubscriptionQuery && this.wsdl && this.wsdl.definitions && this.wsdl.definitions.services) {
+        for (const serviceName of Object.keys(this.wsdl.definitions.services)) {
+          const service = this.wsdl.definitions.services[serviceName];
+          const ports = service?.ports;
+          if (!ports || !ports.PullPointSubscription) continue;
+
+          const originalPorts = service.ports;
+          const prioritized = ['PullPointSubscription', 'SubscriptionManager'];
+          const reordered: any = {};
+
+          for (const key of prioritized) {
+            if (ports[key]) {
+              reordered[key] = ports[key];
+            }
+          }
+          for (const key of Object.keys(ports)) {
+            if (!reordered[key]) {
+              reordered[key] = ports[key];
+            }
+          }
+
+          restorePorts.push({ service, ports: originalPorts });
+          service.ports = reordered;
+        }
+      }
+
+      try {
+        return originalProcess.call(this, input, URL, callback);
+      } finally {
+        for (const entry of restorePorts) {
+          entry.service.ports = entry.ports;
+        }
+      }
+    };
+  }
 
   start() {
     this.starting();

@@ -12,6 +12,7 @@ const utils = Utils.utils;
 
 const NAMESPACE = 'http://www.onvif.org/ver10/events/wsdl';
 const PATH = '/onvif/event_service';
+const SUBSCRIPTION_QUERY = 'subscription';
 const DEFINITIONS_CLOSE_TAG = '</wsdl:definitions>';
 
 interface SubscriptionRecord {
@@ -51,10 +52,10 @@ class EventService extends SoapService {
         `      <soap:address location="${this.serviceAddress()}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="PullPointSubscription" binding="tev:PullPointSubscriptionBinding">\n` +
-        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `      <soap:address location="${this.subscriptionAddress('{subscription-id}')}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="SubscriptionManager" binding="tev:SubscriptionManagerBinding">\n` +
-        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `      <soap:address location="${this.subscriptionAddress('{subscription-id}')}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="NotificationProducer" binding="tev:NotificationProducerBinding">\n` +
         `      <soap:address location="${this.serviceAddress()}" />\n` +
@@ -79,6 +80,11 @@ class EventService extends SoapService {
 
   private serviceAddress() {
     return `http://${utils.getIpAddress()}:${this.config.ServicePort}${EventService.path}`;
+  }
+
+  private subscriptionAddress(id?: string) {
+    const suffix = id ? `${id}` : '';
+    return `${this.serviceAddress()}?${SUBSCRIPTION_QUERY}=${suffix}`;
   }
 
   private buildWsdlWithService(basePath: string, serviceXml: string) {
@@ -280,7 +286,7 @@ class EventService extends SoapService {
 
   private generateSubscriptionReference() {
     const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${EventService.path}?subscription=${id}`;
+    return this.subscriptionAddress(id);
   }
 
   private resolveTermination(termination: any, fallback: Date) {
@@ -376,7 +382,7 @@ class EventService extends SoapService {
       return;
     }
 
-    const reference = `${this.serviceAddress()}?subscription=auto`;
+    const reference = this.subscriptionAddress('auto');
     this.registerSubscription(undefined, new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), reference);
     utils.log.info('Created default IO event subscription at %s', reference);
   }
@@ -424,15 +430,48 @@ class EventService extends SoapService {
         return normalized;
       }
     }
+
+    const subscriptionIds: Set<string> = new Set();
+    for (const candidate of candidates) {
+      const id = this.extractSubscriptionId(candidate);
+      if (id) {
+        subscriptionIds.add(id);
+      }
+    }
+
+    for (const id of subscriptionIds) {
+      for (const key of EventService.registry.keys()) {
+        if (this.extractSubscriptionId(key) === id) {
+          return key;
+        }
+      }
+    }
     return undefined;
   }
 
   private normalizeReference(reference: string): string {
     try {
-      const url = new URL(reference, `http://${utils.getIpAddress()}:${this.config.ServicePort}`);
-      return url.toString();
+      const normalized = new URL(reference, this.subscriptionAddress());
+      const id = normalized.searchParams.get(SUBSCRIPTION_QUERY);
+      if (!id) return normalized.toString();
+
+      const canonical = new URL(this.subscriptionAddress());
+      canonical.searchParams.set(SUBSCRIPTION_QUERY, id);
+      canonical.hash = '';
+      return canonical.toString();
     } catch (err) {
       return reference;
+    }
+  }
+
+  private extractSubscriptionId(reference: string | undefined): string | undefined {
+    if (!reference) return undefined;
+    try {
+      const url = new URL(reference, this.subscriptionAddress());
+      const id = url.searchParams.get(SUBSCRIPTION_QUERY);
+      return id || undefined;
+    } catch (err) {
+      return undefined;
     }
   }
 
