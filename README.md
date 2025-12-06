@@ -284,6 +284,7 @@ This section helps RPOS know where to get live video from
 This section helps RPOS know how to share the video via RTSP with viewers
 ...
 ...
+- AutoSubscribeIOEvents - When true (default), RPOS creates an internal ONVIF event subscription with a wildcard topic filter so IO triggers are buffered and ready for ONVIF clients immediately, even before they create their own subscription. Disable this if you want NVRs to manage subscriptions themselves.
 
 
 ### STEP 7 - RUN RPOS.JS

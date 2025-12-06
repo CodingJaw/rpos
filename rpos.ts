@@ -40,6 +40,7 @@ import PTZService = require("./services/ptz_service");
 import ImagingService = require("./services/imaging_service");
 import DiscoveryService = require("./services/discovery_service");
 import EventService = require("./services/event_service");
+import { IOState } from "./lib/io_state";
 
 import { exit } from "process";
 
@@ -81,6 +82,8 @@ if (typeof data == 'string' && data.charCodeAt(0) === 0xFEFF) {
 let config = JSON.parse(data);
 
 utils.log.level = <Utils.logLevel>config.logLevel;
+config.authDebug = config.authDebug === true;
+config.authDisable = config.authDisable === true;
 
 // config.DeviceInformation has Manufacturer, Model, SerialNumer, FirmwareVersion, HardwareId
 // Probe hardware for values, unless they are given in rposConfig.json
@@ -110,6 +113,7 @@ if (config.DeviceInformation.FirmwareVersion == undefined) config.DeviceInformat
 if (config.DeviceInformation.HardwareId == undefined) config.DeviceInformation.HardwareId = '1001';
 if (config.Codec == undefined) config.Codec = "h264";
 if (config.FPS == undefined) config.FPS = 10;
+if (config.AutoSubscribeIOEvents === undefined) config.AutoSubscribeIOEvents = true;
 
 utils.setConfig(config);
 utils.testIpAddress();
@@ -125,14 +129,23 @@ httpserver.listen(config.ServicePort);
 let ptz_driver = new PTZDriver(config);
 
 let camera = new Camera(config, webserver);
-let deviceio_service = new DeviceIOService(config, httpserver, ptz_driver.process_ptz_command);
+const ioState = new IOState(4, 4);
+let deviceio_service = new DeviceIOService(config, httpserver, ptz_driver.process_ptz_command, ioState);
 let ptz_service = new PTZService(config, httpserver, ptz_driver.process_ptz_command, ptz_driver);
 let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_ptz_command);
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
 let media2_service = new Media2Service(config, httpserver, camera, ptz_service);
 let device_service = new DeviceService(config, httpserver, media_service, ptz_driver.process_ptz_command);
 let discovery_service = new DiscoveryService(config);
-let event_service = new EventService(config, httpserver);
+let event_service = new EventService(config, httpserver, ioState);
+
+ioState.onInputChange((index, value) => {
+  event_service.pushIOEvent("input", index, value);
+});
+
+ioState.onOutputChange((index, value) => {
+  event_service.pushIOEvent("output", index, value);
+});
 
 device_service.start();
 deviceio_service.start();

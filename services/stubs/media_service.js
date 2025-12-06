@@ -11,6 +11,18 @@ var NOT_IMPLEMENTED = {
     }
   }
 };
+var soapFault = function (text) {
+  return {
+    Fault: {
+      Code: {
+        Value: "soap:Sender"
+      },
+      Reason: {
+        Text: text
+      }
+    }
+  };
+};
 var exports = module.exports = {};
 
 exports.MediaService = {
@@ -1263,15 +1275,26 @@ exports.MediaService = {
         //return RemoveAudioSourceConfigurationResponse;
       },
 
-      //var AddPTZConfiguration = { 
+      //var AddPTZConfiguration = {
         //ProfileToken : { xs:string},
         //ConfigurationToken : { xs:string}
       //
       //};
       AddPTZConfiguration : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var AddPTZConfigurationResponse = { };
-        //return AddPTZConfigurationResponse;
+        if (!args || !args.ProfileToken || !args.ConfigurationToken) {
+          return {
+            Fault: {
+              Code: {
+                Value: "soap:Client"
+              },
+              Reason: {
+                Text: "ProfileToken and ConfigurationToken are required"
+              }
+            }
+          };
+        }
+
+        return {};
       },
 
       //var RemovePTZConfiguration = { 
@@ -1538,47 +1561,28 @@ exports.MediaService = {
 
       //var GetVideoAnalyticsConfigurations = { };
       GetVideoAnalyticsConfigurations : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetVideoAnalyticsConfigurationsResponse = { 
-          //Configurations : [{ 
-            //attributes : {
-              //token : {tt:ReferenceToken}
-            //},
-            //Name : { xs:string},
-            //UseCount : { xs:int}
-          //
-            //AnalyticsEngineConfiguration : { 
-              //AnalyticsModule : [{ 
-                //attributes : {
-                  //Name : {xs:string},
-                  //Type : {xs:QName}
-                //},
-                //Parameters : { 
-                  //SimpleItem : [{ }],
-                  //ElementItem : [{ }],
-                  //Extension : { }
-                //}
-              //}],
-              //Extension : { }
-            //},
-            //RuleEngineConfiguration : { 
-              //Rule : [{ 
-                //attributes : {
-                  //Name : {xs:string},
-                  //Type : {xs:QName}
-                //},
-                //Parameters : { 
-                  //SimpleItem : [{ }],
-                  //ElementItem : [{ }],
-                  //Extension : { }
-                //}
-              //}],
-              //Extension : { }
-            //}
-          //}]
-        //
-        //};
-        //return GetVideoAnalyticsConfigurationsResponse;
+        var token = args && args.ConfigurationToken ? args.ConfigurationToken : "VideoAnalyticsToken";
+        var configuration = {
+          attributes : {
+            token : token
+          },
+          Name : "Placeholder Video Analytics",
+          UseCount : 0,
+          AnalyticsEngineConfiguration : {
+            AnalyticsModule : [],
+            Extension : {}
+          },
+          RuleEngineConfiguration : {
+            Rule : [],
+            Extension : {}
+          }
+        };
+
+        var GetVideoAnalyticsConfigurationsResponse = {
+          Configurations : [configuration]
+        };
+
+        return GetVideoAnalyticsConfigurationsResponse;
       },
 
       //var GetMetadataConfigurations = { };
@@ -1810,38 +1814,41 @@ exports.MediaService = {
         //return GetAudioSourceConfigurationResponse;
       },
 
-      //var GetAudioEncoderConfiguration = { 
+      //var GetAudioEncoderConfiguration = {
         //ConfigurationToken : { xs:string}
       //
       //};
       GetAudioEncoderConfiguration : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetAudioEncoderConfigurationResponse = { 
-          //Configuration : { 
-            //attributes : {
-              //token : {tt:ReferenceToken}
-            //},
-            //Name : { xs:string},
-            //UseCount : { xs:int}
-          //
-            //Encoding : { xs:string},
-            //Bitrate : { xs:int},
-            //SampleRate : { xs:int},
-            //Multicast : { 
-              //Address : { 
-                //Type : { xs:string},
-                //IPv4Address : { xs:token},
-                //IPv6Address : { xs:token}
-              //},
-              //Port : { xs:int},
-              //TTL : { xs:int},
-              //AutoStart : { xs:boolean}
-            //},
-            //SessionTimeout : { xs:duration}
-          //}
-        //
-        //};
-        //return GetAudioEncoderConfigurationResponse;
+        if (!args || !args.ConfigurationToken) {
+          throw soapFault("ConfigurationToken is required for GetAudioEncoderConfiguration");
+        }
+
+        var configuration = {
+          attributes : {
+            token : args.ConfigurationToken
+          },
+          Name : "Placeholder Audio Encoder",
+          UseCount : 0,
+          Encoding : "AAC",
+          Bitrate : 128,
+          SampleRate : 48000,
+          Multicast : {
+            Address : {
+              Type : "IPv4",
+              IPv4Address : "0.0.0.0"
+            },
+            Port : 0,
+            TTL : 1,
+            AutoStart : false
+          },
+          SessionTimeout : "PT60S"
+        };
+
+        var GetAudioEncoderConfigurationResponse = {
+          Configuration : configuration
+        };
+
+        return GetAudioEncoderConfigurationResponse;
       },
 
       //var GetVideoAnalyticsConfiguration = { 
@@ -3220,67 +3227,70 @@ xs:string
         //return GetOSDResponse;
       },
 
-      //var GetOSDOptions = { 
+      //var GetOSDOptions = {
         //ConfigurationToken : { xs:string}
       //
       //};
       GetOSDOptions : function(args /*, cb, headers*/) {
-        throw NOT_IMPLEMENTED;
-        //var GetOSDOptionsResponse = { 
-          //OSDOptions : { 
-            //MaximumNumberOfOSDs : { 
-              //attributes : {
-                //Total : {xs:int},
-                //Image : {xs:int},
-                //PlainText : {xs:int},
-                //Date : {xs:int},
-                //Time : {xs:int},
-                //DateAndTime : {xs:int}
-              //}
-            //},
-            //Type : { xs:string},
-            //PositionOption : { xs:string},
-            //TextOption : { 
-              //Type : { xs:string},
-              //FontSizeRange : { 
-                //Min : { xs:int},
-                //Max : { xs:int}
-              //},
-              //DateFormat : [{ xs:string}],
-              //TimeFormat : [{ xs:string}],
-              //FontColor : { 
-                //Color : { },
-                //Transparent : { 
-                  //Min : { xs:int},
-                  //Max : { xs:int}
-                //},
-                //Extension : { }
-              //},
-              //BackgroundColor : { 
-                //Color : { },
-                //Transparent : { 
-                  //Min : { xs:int},
-                  //Max : { xs:int}
-                //},
-                //Extension : { }
-              //},
-              //Extension : { }
-            //},
-            //ImageOption : { 
-              //attributes : {
-                //FormatsSupported : {tt:StringAttrList},
-                //MaxSize : {xs:int},
-                //MaxWidth : {xs:int},
-                //MaxHeight : {xs:int}
-              //},
-              //ImagePath : { xs:anyURI},
-              //Extension : { }
-            //},
-            //Extension : { }
-          //}
-        //
-        //};
-        //return GetOSDOptionsResponse;
+        if (!args || !args.ConfigurationToken) {
+          throw soapFault("ConfigurationToken is required for GetOSDOptions");
+        }
+
+        var options = {
+          MaximumNumberOfOSDs : {
+            attributes : {
+              Total : 1,
+              Image : 0,
+              PlainText : 1,
+              Date : 1,
+              Time : 1,
+              DateAndTime : 1
+            }
+          },
+          Type : ["Text"],
+          PositionOption : ["UpperLeft", "UpperRight", "LowerLeft", "LowerRight"],
+          TextOption : {
+            Type : ["Plain"],
+            FontSizeRange : {
+              Min : 8,
+              Max : 32
+            },
+            DateFormat : ["YYYY-MM-DD"],
+            TimeFormat : ["HH:mm:ss"],
+            FontColor : {
+              Transparent : {
+                Min : 0,
+                Max : 0
+              },
+              Extension : {}
+            },
+            BackgroundColor : {
+              Transparent : {
+                Min : 0,
+                Max : 100
+              },
+              Extension : {}
+            },
+            Extension : {}
+          },
+          ImageOption : {
+            attributes : {
+              FormatsSupported : "PNG",
+              MaxSize : 1,
+              MaxWidth : 320,
+              MaxHeight : 240
+            },
+            ImagePath : "",
+            Extension : {}
+          },
+          Extension : {}
+        };
+
+        var GetOSDOptionsResponse = {
+          OSDOptions : options
+        };
+
+        return GetOSDOptionsResponse;
       },
 
       //var SetOSD = { 

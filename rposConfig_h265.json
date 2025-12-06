@@ -27,5 +27,7 @@
     "HardwareId" : "00001"
   },
   "logLevel" : 3, "logLevelComment": "## LogLevels are > 1:Error 2:Warning 3:Info 4:Debug",
-  "logSoapCalls" : false
+  "logSoapCalls" : false,
+  "authDebug" : false,
+  "authDisable" : false
 }

@@ -205,12 +205,12 @@ class DeviceService extends SoapService {
             VideoOutputs : "0",
             AudioSources : "1",
             AudioOutputs : "1",
-            RelayOutputs : "0",
-            DigitalInputs : "0",
+            RelayOutputs : "4",
+            DigitalInputs : "4",
             SerialPorts : "1",
             DigitalInputOptions : "true"
           },
-          Version : { 
+          Version : {
             Major : 16,
             Minor : 12,
           }
@@ -287,8 +287,8 @@ class DeviceService extends SoapService {
             }
           },
           "tt:IO": {
-            "tt:InputConnectors": 0,
-            "tt:RelayOutputs": 1,
+            "tt:InputConnectors": 4,
+            "tt:RelayOutputs": 4,
             "tt:Extension": {
               "tt:Auxiliary": false,
               "tt:AuxiliaryCommands": ""
@@ -316,7 +316,7 @@ class DeviceService extends SoapService {
       }
       if (category == undefined || category == "All" || category == "Events") {
         GetCapabilitiesResponse.Capabilities["tt:Events"] = {
-          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/events_service`,
+          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/event_service`,
           WSSubscriptionPolicySupport: false,
           WSPullPointSupport: true,
           WSPausableSubscriptionManagerInterfaceSupport: false
@@ -359,7 +359,8 @@ class DeviceService extends SoapService {
             VideoOutputs:0,
             AudioSources:1,
             AudioOutputs:1,
-            RelayOutputs:1
+            RelayOutputs:4,
+            DigitalInputs:4
           }
         }
       }

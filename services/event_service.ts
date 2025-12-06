@@ -6,11 +6,13 @@ import SoapService = require('../lib/SoapService');
 import { Utils } from '../lib/utils';
 import { Server } from 'http';
 import crypto = require('crypto');
+import { IOState } from '../lib/io_state';
 
 const utils = Utils.utils;
 
 const NAMESPACE = 'http://www.onvif.org/ver10/events/wsdl';
-const PATH = '/onvif/events_service';
+const PATH = '/onvif/event_service';
+const DEFINITIONS_CLOSE_TAG = '</wsdl:definitions>';
 
 interface SubscriptionRecord {
   reference: string;
@@ -29,21 +31,42 @@ interface NotificationRecord {
 class EventService extends SoapService {
   static registry: Map<string, SubscriptionRecord> = new Map();
   event_service: any;
+  ioState: IOState;
+  private warnedNoSubscribers = false;
+  private pendingNotifications: NotificationRecord[] = [];
 
-  constructor(config: rposConfig, server: Server) {
+  constructor(config: rposConfig, server: Server, ioState: IOState) {
     super(config, server);
 
     this.event_service = require('./stubs/event_service.js').EventService;
+    this.ioState = ioState;
 
-    this.serviceOptions = {
+        this.serviceOptions = {
       path: EventService.path,
       services: this.event_service,
-      xml: fs.readFileSync('./wsdl/onvif/wsdl/event.wsdl', 'utf8'),
+      xml: this.buildWsdlWithService(
+        './wsdl/onvif/wsdl/event.wsdl',
+        `\n  <wsdl:service name="EventService">\n` +
+        `    <wsdl:port name="EventPort" binding="tev:EventBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="PullPointSubscription" binding="tev:PullPointSubscriptionBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="SubscriptionManager" binding="tev:SubscriptionManagerBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="NotificationProducer" binding="tev:NotificationProducerBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `  </wsdl:service>\n`
+      ),
       uri: 'wsdl/onvif/wsdl/event.wsdl',
       callback: () => console.log('event_service started')
     };
 
     this.extendService();
+    this.ensureAutoSubscription();
   }
 
   static get path() {
@@ -52,6 +75,21 @@ class EventService extends SoapService {
 
   static get namespace() {
     return NAMESPACE;
+  }
+
+  private serviceAddress() {
+    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${EventService.path}`;
+  }
+
+  private buildWsdlWithService(basePath: string, serviceXml: string) {
+    const baseWsdl = fs.readFileSync(basePath, 'utf8');
+    const insertAt = baseWsdl.lastIndexOf(DEFINITIONS_CLOSE_TAG);
+
+    if (insertAt === -1) {
+      throw new Error(`Invalid WSDL: missing ${DEFINITIONS_CLOSE_TAG} in ${basePath}`);
+    }
+
+    return baseWsdl.slice(0, insertAt) + serviceXml + DEFINITIONS_CLOSE_TAG;
   }
 
   extendService() {
@@ -84,7 +122,17 @@ class EventService extends SoapService {
     eventPort.GetEventProperties = () => ({
       TopicNamespaceLocation: [],
       FixedTopicSet: true,
-      TopicSet: {},
+      TopicSet: {
+        attributes: {
+          'xmlns:tns1': 'http://www.onvif.org/ver10/topics'
+        },
+        'tns1:Device': {
+          'tns1:IO': {
+            'tns1:DigitalInput': {},
+            'tns1:RelayOutput': {}
+          }
+        }
+      },
       TopicExpressionDialect: [
         'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete'
       ],
@@ -173,6 +221,55 @@ class EventService extends SoapService {
     };
   }
 
+  pushIOEvent(type: 'input' | 'output', index: number, value: boolean) {
+    const topicBase = type === 'input' ? 'DigitalInput' : 'RelayOutput';
+    const topic = `tns1:Device/IO/${topicBase}/${index}`;
+
+    const message = {
+      'wsnt:NotificationMessage': {
+        'wsnt:Topic': {
+          attributes: {
+            Dialect: 'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete'
+          },
+          $value: topic
+        },
+        'wsnt:Message': {
+          'tt:Message': {
+            'tt:Data': {
+              'tt:SimpleItem': {
+                attributes: {
+                  Name: 'State',
+                  Value: value.toString()
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+
+    if (EventService.registry.size === 0) {
+      if (!this.warnedNoSubscribers) {
+        utils.log.warn('IO event raised without any subscriptions; buffering until a consumer subscribes.');
+        this.warnedNoSubscribers = true;
+      }
+      this.bufferNotification(message);
+      return;
+    }
+
+    let delivered = false;
+    for (const subscription of EventService.registry.values()) {
+      if (this.subscriptionMatchesTopic(subscription, topic)) {
+        subscription.notifications.push({ timestamp: new Date(), message });
+        delivered = true;
+      }
+    }
+
+    if (!delivered) {
+      this.bufferNotification(message, topic);
+    }
+  }
+
   queueNotification(reference: string, message: any, timestamp?: Date) {
     const subscription = EventService.registry.get(reference);
     if (!subscription) {
@@ -225,6 +322,8 @@ class EventService extends SoapService {
 
     EventService.registry.set(ref, subscription);
 
+    this.flushPendingNotifications(subscription);
+
     return {
       subscription,
       response: {
@@ -235,6 +334,79 @@ class EventService extends SoapService {
         TerminationTime: termination.toISOString()
       }
     };
+  }
+
+  private subscriptionMatchesTopic(subscription: SubscriptionRecord, topic: string): boolean {
+    const filters = subscription.filters;
+    if (!filters) return true;
+
+    const expressions: any[] = [];
+    if (filters.TopicExpression) {
+      if (Array.isArray(filters.TopicExpression)) {
+        expressions.push(...filters.TopicExpression);
+      } else {
+        expressions.push(filters.TopicExpression);
+      }
+    }
+    if (filters['wstop:TopicExpression']) {
+      const value = filters['wstop:TopicExpression'];
+      if (Array.isArray(value)) {
+        expressions.push(...value);
+      } else {
+        expressions.push(value);
+      }
+    }
+
+    if (expressions.length === 0) return true;
+
+    return expressions.some((expr) => {
+      const dialect = expr?.attributes?.Dialect || expr?.Dialect;
+      if (dialect && dialect !== 'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete') {
+        return false;
+      }
+      const value = typeof expr === 'string' ? expr : expr?.$value || expr?._ || expr?.['#'] || expr;
+      if (typeof value !== 'string') return false;
+      return value.trim() === topic.trim();
+    });
+  }
+
+  private ensureAutoSubscription() {
+    if (this.config.AutoSubscribeIOEvents === false) {
+      utils.log.warn('Auto-subscription for IO events is disabled; ONVIF clients must create their own subscriptions.');
+      return;
+    }
+
+    const reference = `${this.serviceAddress()}?subscription=auto`;
+    this.registerSubscription(undefined, new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), reference);
+    utils.log.info('Created default IO event subscription at %s', reference);
+  }
+
+  private bufferNotification(message: any, topic?: string) {
+    const record = { timestamp: new Date(), message } as NotificationRecord;
+    this.pendingNotifications.push(record);
+    if (this.pendingNotifications.length > 100) {
+      this.pendingNotifications.shift();
+    }
+
+    if (topic) {
+      utils.log.debug('Buffered IO notification for topic %s until a subscription is available.', topic);
+    }
+  }
+
+  private flushPendingNotifications(subscription: SubscriptionRecord) {
+    if (this.pendingNotifications.length === 0) return;
+
+    const remaining: NotificationRecord[] = [];
+    for (const entry of this.pendingNotifications) {
+      const topic = entry.message?.['wsnt:NotificationMessage']?.['wsnt:Topic']?.$value;
+      if (!topic || this.subscriptionMatchesTopic(subscription, topic)) {
+        subscription.notifications.push(entry);
+      } else {
+        remaining.push(entry);
+      }
+    }
+
+    this.pendingNotifications = remaining;
   }
 
   private getSubscriptionReference(args: any, headers: any, req: any): string | undefined {
