@@ -272,12 +272,12 @@ class EventService extends SoapService {
     }
 
     let delivered = false;
-    for (const subscription of EventService.registry.values()) {
+    EventService.registry.forEach((subscription) => {
       if (this.subscriptionMatchesTopic(subscription, topic)) {
         subscription.notifications.push({ timestamp: new Date(), message });
         delivered = true;
       }
-    }
+    });
 
     if (!delivered) {
       this.bufferNotification(message, topic);
@@ -411,7 +411,8 @@ class EventService extends SoapService {
     if (this.pendingNotifications.length === 0) return;
 
     const remaining: NotificationRecord[] = [];
-    for (const entry of this.pendingNotifications) {
+    for (let i = 0; i < this.pendingNotifications.length; i++) {
+      const entry = this.pendingNotifications[i];
       const topic = entry.message?.['wsnt:NotificationMessage']?.['wsnt:Topic']?.$value;
       if (!topic || this.subscriptionMatchesTopic(subscription, topic)) {
         subscription.notifications.push(entry);
@@ -431,7 +432,8 @@ class EventService extends SoapService {
       candidates.push(`http://${req.headers.host}${req.url}`);
     }
 
-    for (const candidate of candidates) {
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
       if (!candidate) continue;
       const normalized = this.normalizeReference(candidate);
       if (EventService.registry.has(normalized)) {
@@ -440,15 +442,19 @@ class EventService extends SoapService {
     }
 
     const subscriptionIds: Set<string> = new Set();
-    for (const candidate of candidates) {
-      const id = this.extractSubscriptionId(candidate);
+    for (let i = 0; i < candidates.length; i++) {
+      const id = this.extractSubscriptionId(candidates[i]);
       if (id) {
         subscriptionIds.add(id);
       }
     }
 
-    for (const id of subscriptionIds) {
-      for (const key of EventService.registry.keys()) {
+    const registryKeys = Array.from(EventService.registry.keys());
+    const subscriptionIdList = Array.from(subscriptionIds);
+    for (let i = 0; i < subscriptionIdList.length; i++) {
+      const id = subscriptionIdList[i];
+      for (let j = 0; j < registryKeys.length; j++) {
+        const key = registryKeys[j];
         if (this.extractSubscriptionId(key) === id) {
           return key;
         }
