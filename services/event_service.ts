@@ -41,22 +41,22 @@ class EventService extends SoapService {
     this.event_service = require('./stubs/event_service.js').EventService;
     this.ioState = ioState;
 
-    this.serviceOptions = {
+        this.serviceOptions = {
       path: EventService.path,
       services: this.event_service,
       xml: this.buildWsdlWithService(
         './wsdl/onvif/wsdl/event.wsdl',
         `\n  <wsdl:service name="EventService">\n` +
-        `    <wsdl:port name="EventPort" binding="tns:EventBinding">\n` +
+        `    <wsdl:port name="EventPort" binding="tev:EventBinding">\n` +
         `      <soap:address location="${this.serviceAddress()}" />\n` +
         `    </wsdl:port>\n` +
-        `    <wsdl:port name="PullPointSubscription" binding="tns:PullPointSubscriptionBinding">\n` +
+        `    <wsdl:port name="PullPointSubscription" binding="tev:PullPointSubscriptionBinding">\n` +
         `      <soap:address location="${this.serviceAddress()}" />\n` +
         `    </wsdl:port>\n` +
-        `    <wsdl:port name="SubscriptionManager" binding="tns:SubscriptionManagerBinding">\n` +
+        `    <wsdl:port name="SubscriptionManager" binding="tev:SubscriptionManagerBinding">\n` +
         `      <soap:address location="${this.serviceAddress()}" />\n` +
         `    </wsdl:port>\n` +
-        `    <wsdl:port name="NotificationProducer" binding="tns:NotificationProducerBinding">\n` +
+        `    <wsdl:port name="NotificationProducer" binding="tev:NotificationProducerBinding">\n` +
         `      <soap:address location="${this.serviceAddress()}" />\n` +
         `    </wsdl:port>\n` +
         `  </wsdl:service>\n`
