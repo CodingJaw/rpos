@@ -71,9 +71,21 @@ class SoapService {
     }
 
     const originalProcess = soap.Server.prototype._process;
-    soap.Server.prototype._process = function(input: any, URL: any, callback: any) {
-      const parsedUrl = url.parse(URL, true);
-      const hasSubscriptionQuery = parsedUrl.query && parsedUrl.query.subscription !== undefined;
+    soap.Server.prototype._process = function() {
+      const args = Array.prototype.slice.call(arguments);
+      const reqOrUrl = args[1];
+
+      let parsedUrl: url.UrlWithParsedQuery | null = null;
+      try {
+        const urlValue = typeof reqOrUrl === 'string' ? reqOrUrl : reqOrUrl?.url;
+        if (typeof urlValue === 'string') {
+          parsedUrl = url.parse(urlValue, true);
+        }
+      } catch (err) {
+        parsedUrl = null;
+      }
+
+      const hasSubscriptionQuery = parsedUrl?.query && parsedUrl.query.subscription !== undefined;
 
       let restorePorts: { service: any; ports: any }[] = [];
       if (hasSubscriptionQuery && this.wsdl && this.wsdl.definitions && this.wsdl.definitions.services) {
@@ -103,7 +115,7 @@ class SoapService {
       }
 
       try {
-        return originalProcess.call(this, input, URL, callback);
+        return originalProcess.apply(this, args);
       } finally {
         for (const entry of restorePorts) {
           entry.service.ports = entry.ports;
