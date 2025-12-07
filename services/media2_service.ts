@@ -12,6 +12,8 @@ import { exec } from 'child_process';
 import PTZService = require('./ptz_service');
 import MediaService = require("./media_service");
 var utils = Utils.utils;
+const NAMESPACE = "http://www.onvif.org/ver20/media/wsdl";
+const PATH = '/onvif/media2_service';
 
 const DEFINITIONS_CLOSE_TAG = '</wsdl:definitions>';
 
@@ -25,6 +27,14 @@ class Media2Service extends MediaService {
   constructor(config: rposConfig, server: Server, camera: Camera, ptz_service: PTZService) {
     super(config, server,camera, ptz_service);
 
+  }
+
+  static get namespace() {
+    return NAMESPACE;
+  }
+
+  static get path() {
+    return PATH;
   }
 
   //Init called from parent constructor
@@ -62,7 +72,7 @@ class Media2Service extends MediaService {
   }
 
   private serviceAddress() {
-    return `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/media2_service`;
+    return this.endpointAddress('/onvif/media2_service');
   }
 
   private buildWsdlWithService(basePath: string, serviceXml: string) {

@@ -12,6 +12,7 @@ const utils = Utils.utils;
 
 const NAMESPACE = 'http://www.onvif.org/ver10/events/wsdl';
 const PATH = '/onvif/event_service';
+const SUBSCRIPTION_QUERY = 'subscription';
 const DEFINITIONS_CLOSE_TAG = '</wsdl:definitions>';
 
 interface SubscriptionRecord {
@@ -51,10 +52,10 @@ class EventService extends SoapService {
         `      <soap:address location="${this.serviceAddress()}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="PullPointSubscription" binding="tev:PullPointSubscriptionBinding">\n` +
-        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `      <soap:address location="${this.subscriptionAddress('{subscription-id}')}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="SubscriptionManager" binding="tev:SubscriptionManagerBinding">\n` +
-        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `      <soap:address location="${this.subscriptionAddress('{subscription-id}')}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="NotificationProducer" binding="tev:NotificationProducerBinding">\n` +
         `      <soap:address location="${this.serviceAddress()}" />\n` +
@@ -78,7 +79,12 @@ class EventService extends SoapService {
   }
 
   private serviceAddress() {
-    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${EventService.path}`;
+    return this.endpointAddress(EventService.path);
+  }
+
+  private subscriptionAddress(id?: string) {
+    const suffix = id ? `${id}` : '';
+    return `${this.serviceAddress()}?${SUBSCRIPTION_QUERY}=${suffix}`;
   }
 
   private buildWsdlWithService(basePath: string, serviceXml: string) {
@@ -93,11 +99,19 @@ class EventService extends SoapService {
   }
 
   extendService() {
-    const service = this.event_service.EventService;
-    const eventPort = service.EventPort;
-    const pullPoint = service.PullPointSubscription;
-    const subscriptionManager = service.SubscriptionManager;
-    const notificationProducer = service.NotificationProducer;
+    const service = this.event_service.EventService || this.event_service;
+    if (!service) {
+      throw new Error('EventService stub is missing the EventService definition');
+    }
+
+    const eventPort = service.EventPort || (service.EventPort = {});
+    const pullPoint = service.PullPointSubscription || (service.PullPointSubscription = {});
+    const subscriptionManager = service.SubscriptionManager || (service.SubscriptionManager = {});
+    const notificationProducer = service.NotificationProducer || (service.NotificationProducer = {});
+
+    if (!eventPort || !pullPoint || !subscriptionManager || !notificationProducer) {
+      throw new Error('EventService stub is missing one or more ports');
+    }
 
     eventPort.GetServiceCapabilities = () => ({
       Capabilities: {
@@ -258,12 +272,12 @@ class EventService extends SoapService {
     }
 
     let delivered = false;
-    for (const subscription of EventService.registry.values()) {
+    EventService.registry.forEach((subscription) => {
       if (this.subscriptionMatchesTopic(subscription, topic)) {
         subscription.notifications.push({ timestamp: new Date(), message });
         delivered = true;
       }
-    }
+    });
 
     if (!delivered) {
       this.bufferNotification(message, topic);
@@ -280,7 +294,7 @@ class EventService extends SoapService {
 
   private generateSubscriptionReference() {
     const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${EventService.path}?subscription=${id}`;
+    return this.subscriptionAddress(id);
   }
 
   private resolveTermination(termination: any, fallback: Date) {
@@ -376,7 +390,7 @@ class EventService extends SoapService {
       return;
     }
 
-    const reference = `${this.serviceAddress()}?subscription=auto`;
+    const reference = this.subscriptionAddress('auto');
     this.registerSubscription(undefined, new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), reference);
     utils.log.info('Created default IO event subscription at %s', reference);
   }
@@ -397,7 +411,8 @@ class EventService extends SoapService {
     if (this.pendingNotifications.length === 0) return;
 
     const remaining: NotificationRecord[] = [];
-    for (const entry of this.pendingNotifications) {
+    for (let i = 0; i < this.pendingNotifications.length; i++) {
+      const entry = this.pendingNotifications[i];
       const topic = entry.message?.['wsnt:NotificationMessage']?.['wsnt:Topic']?.$value;
       if (!topic || this.subscriptionMatchesTopic(subscription, topic)) {
         subscription.notifications.push(entry);
@@ -417,11 +432,32 @@ class EventService extends SoapService {
       candidates.push(`http://${req.headers.host}${req.url}`);
     }
 
-    for (const candidate of candidates) {
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
       if (!candidate) continue;
       const normalized = this.normalizeReference(candidate);
       if (EventService.registry.has(normalized)) {
         return normalized;
+      }
+    }
+
+    const subscriptionIds: Set<string> = new Set();
+    for (let i = 0; i < candidates.length; i++) {
+      const id = this.extractSubscriptionId(candidates[i]);
+      if (id) {
+        subscriptionIds.add(id);
+      }
+    }
+
+    const registryKeys = Array.from(EventService.registry.keys());
+    const subscriptionIdList = Array.from(subscriptionIds);
+    for (let i = 0; i < subscriptionIdList.length; i++) {
+      const id = subscriptionIdList[i];
+      for (let j = 0; j < registryKeys.length; j++) {
+        const key = registryKeys[j];
+        if (this.extractSubscriptionId(key) === id) {
+          return key;
+        }
       }
     }
     return undefined;
@@ -429,10 +465,27 @@ class EventService extends SoapService {
 
   private normalizeReference(reference: string): string {
     try {
-      const url = new URL(reference, `http://${utils.getIpAddress()}:${this.config.ServicePort}`);
-      return url.toString();
+      const normalized = new URL(reference, this.subscriptionAddress());
+      const id = normalized.searchParams.get(SUBSCRIPTION_QUERY);
+      if (!id) return normalized.toString();
+
+      const canonical = new URL(this.subscriptionAddress());
+      canonical.searchParams.set(SUBSCRIPTION_QUERY, id);
+      canonical.hash = '';
+      return canonical.toString();
     } catch (err) {
       return reference;
+    }
+  }
+
+  private extractSubscriptionId(reference: string | undefined): string | undefined {
+    if (!reference) return undefined;
+    try {
+      const url = new URL(reference, this.subscriptionAddress());
+      const id = url.searchParams.get(SUBSCRIPTION_QUERY);
+      return id || undefined;
+    } catch (err) {
+      return undefined;
     }
   }
 

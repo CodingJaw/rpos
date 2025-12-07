@@ -8,6 +8,8 @@ import { Utils }  from '../lib/utils';
 import { Server } from 'http';
 
 var utils = Utils.utils;
+const NAMESPACE = "http://www.onvif.org/ver20/imaging/wsdl";
+const PATH = '/onvif/imaging_service';
 
 class ImagingService extends SoapService {
   imaging_service: any;
@@ -26,9 +28,9 @@ class ImagingService extends SoapService {
     this.callback = callback;
 
     this.serviceOptions = {
-      path: '/onvif/imaging_service',
+      path: PATH,
       services: this.imaging_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/imaging_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/imaging_service.wsdl'),
       uri: 'wsdl/onvif/services/imaging_service.wsdl',
       callback: () => console.log('imaging_service started')
     };
@@ -40,6 +42,14 @@ class ImagingService extends SoapService {
     this.focusFarLimit = 0.0; // range 0.0 to 0.0.  0=Infinity
 
     this.extendService();
+  }
+
+  static get namespace() {
+    return NAMESPACE;
+  }
+
+  static get path() {
+    return PATH;
   }
 
   extendService() {

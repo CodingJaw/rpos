@@ -3,6 +3,8 @@
 import fs = require("fs");
 import { Utils }  from './utils';
 import { Server } from 'http';
+import { URL as NodeUrl } from 'url';
+import url = require('url');
 var soap = <any>require('soap');
 var utils = Utils.utils;
 
@@ -36,6 +38,8 @@ class SoapService {
   serviceOptions: SoapServiceOptions;
   startedCallbacks: (() => void)[];
   isStarted: boolean;
+  private static subscriptionBindingPatched = false;
+  private static readonly localhostEndpoint = /http:\/\/localhost(\/onvif\/[A-Za-z0-9_]+_service)/g;
 
   constructor(config: rposConfig, server: Server) {
     this.webserver = server;
@@ -43,6 +47,8 @@ class SoapService {
     this.serviceInstance = null;
     this.startedCallbacks = [];
     this.isStarted = false;
+
+    this.ensureSubscriptionBindingPatch();
 
     this.serviceOptions = {
       path: '',
@@ -54,9 +60,134 @@ class SoapService {
 
   }
 
+  protected endpointAddress(path: string) {
+    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${path}`;
+  }
+
+  protected loadWsdlWithAddress(wsdlPath: string) {
+    const xml = fs.readFileSync(wsdlPath, 'utf8');
+    return this.injectServiceAddresses(xml);
+  }
+
+  protected injectServiceAddresses(xml: string) {
+    const normalize = (location: string) => this.normalizeAddress(location);
+
+    // First, replace the legacy localhost placeholders used by the stock WSDLs.
+    let replaced = xml.replace(SoapService.localhostEndpoint, (_match, path) => this.endpointAddress(path));
+
+    // Next, ensure every soap:address location string is rewritten with the
+    // configured host and port so describe() always advertises reachable XAddrs.
+    replaced = replaced.replace(/<soap:address([^>]*)\slocation="([^"]+)"([^>]*)\/>/g, (_match, pre, location, post) => {
+      return `<soap:address${pre} location="${normalize(location)}"${post}/>`;
+    });
+
+    return replaced;
+  }
+
+  private normalizeAddress(location: string) {
+    try {
+      const parsed = new NodeUrl(location);
+      parsed.hostname = utils.getIpAddress();
+      parsed.port = String(this.config.ServicePort);
+      if (!parsed.protocol) {
+        parsed.protocol = 'http:';
+      }
+      return parsed.toString();
+    } catch (err) {
+      const path = location.startsWith('/') ? location : `/${location}`;
+      return this.endpointAddress(path);
+    }
+  }
+
   starting() { }
 
   started() { }
+
+  private ensureSubscriptionBindingPatch() {
+    if (SoapService.subscriptionBindingPatched) return;
+    SoapService.subscriptionBindingPatched = true;
+
+    if (!soap || !soap.Server || typeof soap.Server.prototype._process !== 'function') {
+      return;
+    }
+
+    const originalProcess = soap.Server.prototype._process;
+    soap.Server.prototype._process = function() {
+      const args = Array.prototype.slice.call(arguments);
+      const reqOrUrl = args[1];
+      const inputXml = args[0];
+
+      let parsedUrl: url.UrlWithParsedQuery | null = null;
+      try {
+        const urlValue = typeof reqOrUrl === 'string' ? reqOrUrl : reqOrUrl?.url;
+        if (typeof urlValue === 'string') {
+          parsedUrl = url.parse(urlValue, true);
+        }
+      } catch (err) {
+        parsedUrl = null;
+      }
+
+      let actionHint: string | null = null;
+      try {
+        const parsed = typeof inputXml === 'string' && this.wsdl?.xmlToObject ? this.wsdl.xmlToObject(inputXml) : null;
+        const actionRaw = parsed?.Header?.Action || parsed?.Header?.['wsa:Action'] || parsed?.Header?.wsa__Action;
+        const action = typeof actionRaw === 'string' ? actionRaw : actionRaw?.$value || actionRaw?._; 
+
+        if (typeof action === 'string') {
+          if (action.indexOf('SubscriptionManager') !== -1 || action.indexOf('/Renew') !== -1 || action.indexOf('/Unsubscribe') !== -1) {
+            actionHint = 'SubscriptionManager';
+          } else if (action.indexOf('PullPointSubscription') !== -1 || action.indexOf('/PullMessages') !== -1) {
+            actionHint = 'PullPointSubscription';
+          }
+        }
+      } catch (err) {
+        actionHint = null;
+      }
+
+      const hasSubscriptionQuery = parsedUrl?.query && parsedUrl.query.subscription !== undefined;
+
+      let restorePorts: { service: any; ports: any }[] = [];
+      if (hasSubscriptionQuery && this.wsdl && this.wsdl.definitions && this.wsdl.definitions.services) {
+        for (const serviceName of Object.keys(this.wsdl.definitions.services)) {
+          const service = this.wsdl.definitions.services[serviceName];
+          const ports = service?.ports;
+          if (!ports || !ports.PullPointSubscription) continue;
+
+          const originalPorts = service.ports;
+          const prioritized = [] as string[];
+          if (actionHint) prioritized.push(actionHint);
+          prioritized.push('PullPointSubscription', 'SubscriptionManager');
+
+          const seen: Record<string, boolean> = {};
+          const reordered: any = {};
+
+          for (const key of prioritized) {
+            if (ports[key] && !seen[key]) {
+              reordered[key] = ports[key];
+              seen[key] = true;
+            }
+          }
+          for (const key of Object.keys(ports)) {
+            if (!seen[key]) {
+              reordered[key] = ports[key];
+              seen[key] = true;
+            }
+          }
+
+          restorePorts.push({ service, ports: originalPorts });
+          service.ports = reordered;
+        }
+      }
+
+      try {
+        return originalProcess.apply(this, args);
+      } finally {
+        for (const entry of restorePorts) {
+          entry.service.ports = entry.ports;
+        }
+      }
+    };
+  }
 
   start() {
     this.starting();
@@ -66,6 +197,8 @@ class SoapService {
       this._started();
     };
     this.serviceInstance = soap.listen(this.webserver, this.serviceOptions);
+
+    this.ensureWsdlPorts();
 
     this.serviceInstance.on("request", (request: any, methodName: string) => {
       utils.log.debug('%s received request %s', (<TypeConstructor>this.constructor).name, methodName);
@@ -159,6 +292,39 @@ class SoapService {
       if (this.config.logSoapCalls)
         utils.log.debug('%s - Calltype : %s, Data : %s', (<TypeConstructor>this.constructor).name, type, data);
     };
+  }
+
+  private ensureWsdlPorts() {
+    const wsdl = (this as any).serviceInstance?.wsdl;
+    const definitions = wsdl?.definitions;
+    if (!definitions || !definitions.services) {
+      return;
+    }
+
+    const bindings = definitions.bindings || {};
+    const servicesImplementation = this.serviceOptions.services || {};
+
+    for (const serviceName of Object.keys(definitions.services)) {
+      const service = definitions.services[serviceName];
+      if (!service?.ports) continue;
+
+      if (!servicesImplementation[serviceName]) {
+        throw new Error(`SOAP implementation missing for service '${serviceName}'`);
+      }
+
+      for (const portName of Object.keys(service.ports)) {
+        const port = service.ports[portName];
+
+        if (typeof port?.location === 'string') {
+          port.location = this.normalizeAddress(port.location);
+        }
+
+        const bindingName = (port?.binding && (port.binding.$name || port.binding.name)) || '';
+        if (bindingName && !bindings[bindingName]) {
+          throw new Error(`WSDL binding '${bindingName}' missing for port '${portName}' in service '${serviceName}'`);
+        }
+      }
+    }
   }
 
   onStarted(callback: () => {}) {
