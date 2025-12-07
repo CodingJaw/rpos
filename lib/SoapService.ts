@@ -3,6 +3,7 @@
 import fs = require("fs");
 import { Utils }  from './utils';
 import { Server } from 'http';
+import { URL as NodeUrl } from 'url';
 import url = require('url');
 var soap = <any>require('soap');
 var utils = Utils.utils;
@@ -69,7 +70,33 @@ class SoapService {
   }
 
   protected injectServiceAddresses(xml: string) {
-    return xml.replace(SoapService.localhostEndpoint, (_match, path) => this.endpointAddress(path));
+    const normalize = (location: string) => this.normalizeAddress(location);
+
+    // First, replace the legacy localhost placeholders used by the stock WSDLs.
+    let replaced = xml.replace(SoapService.localhostEndpoint, (_match, path) => this.endpointAddress(path));
+
+    // Next, ensure every soap:address location string is rewritten with the
+    // configured host and port so describe() always advertises reachable XAddrs.
+    replaced = replaced.replace(/<soap:address([^>]*)\slocation="([^"]+)"([^>]*)\/>/g, (_match, pre, location, post) => {
+      return `<soap:address${pre} location="${normalize(location)}"${post}/>`;
+    });
+
+    return replaced;
+  }
+
+  private normalizeAddress(location: string) {
+    try {
+      const parsed = new NodeUrl(location);
+      parsed.hostname = utils.getIpAddress();
+      parsed.port = String(this.config.ServicePort);
+      if (!parsed.protocol) {
+        parsed.protocol = 'http:';
+      }
+      return parsed.toString();
+    } catch (err) {
+      const path = location.startsWith('/') ? location : `/${location}`;
+      return this.endpointAddress(path);
+    }
   }
 
   starting() { }
@@ -171,6 +198,8 @@ class SoapService {
     };
     this.serviceInstance = soap.listen(this.webserver, this.serviceOptions);
 
+    this.ensureWsdlPorts();
+
     this.serviceInstance.on("request", (request: any, methodName: string) => {
       utils.log.debug('%s received request %s', (<TypeConstructor>this.constructor).name, methodName);
 
@@ -263,6 +292,39 @@ class SoapService {
       if (this.config.logSoapCalls)
         utils.log.debug('%s - Calltype : %s, Data : %s', (<TypeConstructor>this.constructor).name, type, data);
     };
+  }
+
+  private ensureWsdlPorts() {
+    const wsdl = (this as any).serviceInstance?.wsdl;
+    const definitions = wsdl?.definitions;
+    if (!definitions || !definitions.services) {
+      return;
+    }
+
+    const bindings = definitions.bindings || {};
+    const servicesImplementation = this.serviceOptions.services || {};
+
+    for (const serviceName of Object.keys(definitions.services)) {
+      const service = definitions.services[serviceName];
+      if (!service?.ports) continue;
+
+      if (!servicesImplementation[serviceName]) {
+        throw new Error(`SOAP implementation missing for service '${serviceName}'`);
+      }
+
+      for (const portName of Object.keys(service.ports)) {
+        const port = service.ports[portName];
+
+        if (typeof port?.location === 'string') {
+          port.location = this.normalizeAddress(port.location);
+        }
+
+        const bindingName = (port?.binding && (port.binding.$name || port.binding.name)) || '';
+        if (bindingName && !bindings[bindingName]) {
+          throw new Error(`WSDL binding '${bindingName}' missing for port '${portName}' in service '${serviceName}'`);
+        }
+      }
+    }
   }
 
   onStarted(callback: () => {}) {
