@@ -75,6 +75,18 @@ registry.register({
   Namespace: 'http://www.onvif.org/ver10/deviceIO/wsdl',
   XAddr: 'http://127.0.0.1:8080/onvif/deviceio_service'
 });
+registry.register({
+  Namespace: 'http://www.onvif.org/ver10/events/wsdl',
+  XAddr: 'http://127.0.0.1:8080/onvif/event_service'
+});
+registry.register({
+  Namespace: 'http://www.onvif.org/ver20/media/wsdl',
+  XAddr: 'http://127.0.0.1:8080/onvif/media2_service'
+});
+registry.register({
+  Namespace: 'http://www.onvif.org/ver20/ptz/wsdl',
+  XAddr: 'http://127.0.0.1:8080/onvif/ptz_service'
+});
 
 const deviceService = new DeviceService(dummyConfig, http.createServer(), <any>mediaStub, () => {}, registry);
 const getServices = deviceService['device_service'].DeviceService.Device.GetServices;
@@ -83,10 +95,30 @@ const response = getServices({});
 assert.ok(response.Service instanceof Array, 'GetServices should return a Service array');
 
 var foundDeviceIO = false;
+var foundEvent = false;
+var foundMedia2 = false;
+var foundPTZ = false;
+var allXaddrsIncludePort = true;
 for (var i = 0; i < response.Service.length; i++) {
   if (response.Service[i].Namespace === 'http://www.onvif.org/ver10/deviceIO/wsdl') {
     foundDeviceIO = true;
   }
+  if (response.Service[i].Namespace === 'http://www.onvif.org/ver10/events/wsdl') {
+    foundEvent = true;
+  }
+  if (response.Service[i].Namespace === 'http://www.onvif.org/ver20/media/wsdl') {
+    foundMedia2 = true;
+  }
+  if (response.Service[i].Namespace === 'http://www.onvif.org/ver20/ptz/wsdl') {
+    foundPTZ = true;
+  }
+  if (typeof response.Service[i].XAddr !== 'string' || response.Service[i].XAddr.indexOf(':8080/') === -1) {
+    allXaddrsIncludePort = false;
+  }
 }
 
 assert.ok(foundDeviceIO, 'DeviceIO namespace must be present in GetServices response');
+assert.ok(foundEvent, 'Event namespace must be present in GetServices response');
+assert.ok(foundMedia2, 'Media2 namespace must be present in GetServices response');
+assert.ok(foundPTZ, 'PTZ namespace must be present in GetServices response');
+assert.ok(allXaddrsIncludePort, 'All XAddr values must include the service port');

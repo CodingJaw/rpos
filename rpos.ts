@@ -125,7 +125,6 @@ for (var i in config.DeviceInformation) {
 
 let webserver = express();
 let httpserver = http.createServer(webserver);
-httpserver.listen(config.ServicePort);
 
 let ptz_driver = new PTZDriver(config);
 
@@ -293,4 +292,5 @@ ptz_service.start();
 imaging_service.start();
 event_service.start();
 device_service.start();
+httpserver.listen(config.ServicePort);
 discovery_service.start();

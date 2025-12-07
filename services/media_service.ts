@@ -35,7 +35,7 @@ class MediaService extends SoapService {
     this.serviceOptions = {
       path: PATH,
       services: this.media_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/media_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/media_service.wsdl'),
       uri: 'wsdl/onvif/services/media_service.wsdl',
       callback: function() {
         utils.log.info('media_service started');

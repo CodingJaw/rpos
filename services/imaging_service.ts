@@ -30,7 +30,7 @@ class ImagingService extends SoapService {
     this.serviceOptions = {
       path: PATH,
       services: this.imaging_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/imaging_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/imaging_service.wsdl'),
       uri: 'wsdl/onvif/services/imaging_service.wsdl',
       callback: () => console.log('imaging_service started')
     };

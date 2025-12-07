@@ -72,7 +72,7 @@ class Media2Service extends MediaService {
   }
 
   private serviceAddress() {
-    return `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/media2_service`;
+    return this.endpointAddress('/onvif/media2_service');
   }
 
   private buildWsdlWithService(basePath: string, serviceXml: string) {

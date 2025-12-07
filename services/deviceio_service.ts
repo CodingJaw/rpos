@@ -27,7 +27,7 @@ class DeviceIOService extends SoapService {
     this.serviceOptions = {
       path: PATH,
       services: this.device_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/deviceio_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/deviceio_service.wsdl'),
       uri: 'wsdl/onvif/services/deviceio_service.wsdl',
       callback: () => console.log('deviceio_service started')
     };

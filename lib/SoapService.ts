@@ -38,6 +38,7 @@ class SoapService {
   startedCallbacks: (() => void)[];
   isStarted: boolean;
   private static subscriptionBindingPatched = false;
+  private static readonly localhostEndpoint = /http:\/\/localhost(\/onvif\/[A-Za-z0-9_]+_service)/g;
 
   constructor(config: rposConfig, server: Server) {
     this.webserver = server;
@@ -56,6 +57,19 @@ class SoapService {
       callback: (err: any, res: any) => void {}
     };
 
+  }
+
+  protected endpointAddress(path: string) {
+    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${path}`;
+  }
+
+  protected loadWsdlWithAddress(wsdlPath: string) {
+    const xml = fs.readFileSync(wsdlPath, 'utf8');
+    return this.injectServiceAddresses(xml);
+  }
+
+  protected injectServiceAddresses(xml: string) {
+    return xml.replace(SoapService.localhostEndpoint, (_match, path) => this.endpointAddress(path));
   }
 
   starting() { }

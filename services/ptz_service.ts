@@ -32,7 +32,7 @@ class PTZService extends SoapService {
     this.serviceOptions = {
       path: PATH,
       services: this.ptz_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/ptz_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/ptz_service.wsdl'),
       uri: 'wsdl/onvif/services/ptz_service.wsdl',
       callback: () => console.log('ptz_service started')
     };
@@ -62,7 +62,12 @@ class PTZService extends SoapService {
   }
 
   extendService() {
-    var port = this.ptz_service.PTZService.PTZ;
+    const service = this.ptz_service.PTZService || this.ptz_service;
+    if (!service || !service.PTZ) {
+      throw new Error('PTZService stub is missing PTZ bindings');
+    }
+
+    var port = service.PTZ;
     
     var node = { 
       attributes : {

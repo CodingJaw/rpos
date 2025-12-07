@@ -32,7 +32,7 @@ class DeviceService extends SoapService {
     this.serviceOptions = {
       path: DeviceService.path,
       services: this.device_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/device_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/device_service.wsdl'),
       uri: 'wsdl/onvif/services/device_service.wsdl',
       callback: () => console.log('device_service started')
     };
@@ -133,7 +133,7 @@ class DeviceService extends SoapService {
       if (category === undefined || category == "All" || category == "Device") {
         // var device_caps = this.getPort().GetServiceCapabilities();
         GetCapabilitiesResponse.Capabilities["tt:Device"] = {
-          "tt:XAddr": `http://${utils.getIpAddress() }:${this.config.ServicePort}${DeviceService.path}`,
+          "tt:XAddr": this.endpointAddress(DeviceService.path),
           "tt:Network": {
             "tt:IPFilter": false,
             "tt:ZeroConfiguration": false,
@@ -188,7 +188,7 @@ class DeviceService extends SoapService {
       }
       if (category == undefined || category == "All" || category == "Events") {
         GetCapabilitiesResponse.Capabilities["tt:Events"] = {
-          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/event_service`,
+          XAddr: this.endpointAddress('/onvif/event_service'),
           WSSubscriptionPolicySupport: false,
           WSPullPointSupport: true,
           WSPausableSubscriptionManagerInterfaceSupport: false
@@ -196,13 +196,13 @@ class DeviceService extends SoapService {
       }
       if (category === undefined || category == "All" || category == "Imaging") {
         GetCapabilitiesResponse.Capabilities["tt:Imaging"] = {
-          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/imaging_service`
+          XAddr: this.endpointAddress('/onvif/imaging_service')
         }
       }
       if (category === undefined || category == "All" || category == "Media") {
         var media_caps = this.media_service.getPort().GetServiceCapabilities();
         GetCapabilitiesResponse.Capabilities["tt:Media"] = {
-          "tt:XAddr": `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/media_service`,
+          "tt:XAddr": this.endpointAddress('/onvif/media_service'),
           "tt:StreamingCapabilities": {
             "tt:RTPMulticast": media_caps['trt:Capabilities']['trt:StreamingCapabilities'].attributes.RTPMulticast,
             "tt:RTP_TCP": media_caps['trt:Capabilities']['trt:StreamingCapabilities'].attributes.RTP_TCP,
@@ -218,7 +218,7 @@ class DeviceService extends SoapService {
       }
       if (category === undefined || category == "All" || category == "PTZ") {
         GetCapabilitiesResponse.Capabilities["tt:PTZ"] = {
-          XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/ptz_service`
+          XAddr: this.endpointAddress('/onvif/ptz_service')
         }
       }
 
@@ -226,7 +226,7 @@ class DeviceService extends SoapService {
       if (category === undefined || category == "All" || category == "Extension") {
         GetCapabilitiesResponse.Capabilities["tt:Extension"] = {
           DeviceIO:{
-            XAddr: `http://${utils.getIpAddress() }:${this.config.ServicePort}/onvif/deviceio_service`,
+            XAddr: this.endpointAddress('/onvif/deviceio_service'),
             VideoSources:1,
             VideoOutputs:0,
             AudioSources:1,
