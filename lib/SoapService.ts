@@ -1,21 +1,21 @@
-﻿///<reference path="../rpos.d.ts"/>
+///<reference path="../rpos.d.ts"/>
 
 import fs = require("fs");
 import { Utils }  from './utils';
 import { Server } from 'http';
 import url = require('url');
-var soap = <any>require('soap');
-var utils = Utils.utils;
+const soap = <any>require('soap');
+const utils = Utils.utils;
 
-var NOT_IMPLEMENTED = {
+const NOT_IMPLEMENTED = {
   Fault: {
-    attributes: { // Add namespace here. Really wanted to put it in Envelope but this should be valid
+    attributes: {
       'xmlns:ter' : 'http://www.onvif.org/ver10/error',
     },
     Code: {
       Value: "soap:Sender",
       Subcode: {
-        Value: "ter:NotAuthorized",  
+        Value: "ter:NotAuthorized",
       },
     },
     Reason: {
@@ -29,7 +29,6 @@ var NOT_IMPLEMENTED = {
   }
 };
 
-
 class SoapService {
   webserver: Server;
   config: rposConfig;
@@ -38,7 +37,8 @@ class SoapService {
   startedCallbacks: (() => void)[];
   isStarted: boolean;
   private static subscriptionBindingPatched = false;
-  private static readonly localhostEndpoint = /http:\/\/localhost(\/onvif\/[A-Za-z0-9_]+_service)/g;
+  private static readonly localhostEndpoint =
+    /http:\/\/localhost(\/onvif\/[A-Za-z0-9_]+_service)/g;
 
   constructor(config: rposConfig, server: Server) {
     this.webserver = server;
@@ -54,9 +54,9 @@ class SoapService {
       services: null,
       xml: null,
       uri: '',
-      callback: (err: any, res: any) => void {}
+      // default no-op; replaced when soap.listen() binds
+      callback: (err: any, res: any) => { /* no-op */ }
     };
-
   }
 
   protected endpointAddress(path: string) {
@@ -71,28 +71,45 @@ class SoapService {
   protected injectServiceAddresses(xml: string) {
     const normalize = (location: string) => this.normalizeAddress(location);
 
-    // First, replace the legacy localhost placeholders used by the stock WSDLs.
-    let replaced = xml.replace(SoapService.localhostEndpoint, (_match, path) => this.endpointAddress(path));
+    // Replace legacy localhost placeholders used by the stock WSDLs.
+    let replaced = xml.replace(
+      SoapService.localhostEndpoint,
+      (_match, path) => this.endpointAddress(path)
+    );
 
-    // Next, ensure every soap:address location string is rewritten with the
+    // Ensure every soap:address location string is rewritten with the
     // configured host and port so describe() always advertises reachable XAddrs.
-    replaced = replaced.replace(/<soap:address([^>]*)\slocation="([^"]+)"([^>]*)\/>/g, (_match, pre, location, post) => {
-      return `<soap:address${pre} location="${normalize(location)}"${post}/>`;
-    });
+    replaced = replaced.replace(
+      /<soap:address([^>]*)\slocation="([^"]+)"([^>]*)\/>/g,
+      (_match, pre, location, post) => {
+        return `<soap:address${pre} location="${normalize(location)}"${post}/>`;
+      }
+    );
 
     return replaced;
   }
 
   private normalizeAddress(location: string) {
+    // If the WSDL has only a path (e.g. "/onvif/device_service"),
+    // construct a full URL relative to our advertised endpoint.
+    const base = `http://${utils.getIpAddress()}:${this.config.ServicePort}`;
+
     try {
-      const parsed = new NodeUrl(location);
+      // url.URL handles both absolute and relative URLs with a base.
+      const parsed = new url.URL(location, base);
+
+      // Force host/port to match current config, ignoring what was in the WSDL.
       parsed.hostname = utils.getIpAddress();
       parsed.port = String(this.config.ServicePort);
+
       if (!parsed.protocol) {
         parsed.protocol = 'http:';
       }
+
+      // Return canonical string form.
       return parsed.toString();
     } catch (err) {
+      // As a fallback, treat the location as a path and build from scratch.
       const path = location.startsWith('/') ? location : `/${location}`;
       return this.endpointAddress(path);
     }
@@ -111,6 +128,7 @@ class SoapService {
     }
 
     const originalProcess = soap.Server.prototype._process;
+
     soap.Server.prototype._process = function() {
       const args = Array.prototype.slice.call(arguments);
       const reqOrUrl = args[1];
@@ -128,14 +146,31 @@ class SoapService {
 
       let actionHint: string | null = null;
       try {
-        const parsed = typeof inputXml === 'string' && this.wsdl?.xmlToObject ? this.wsdl.xmlToObject(inputXml) : null;
-        const actionRaw = parsed?.Header?.Action || parsed?.Header?.['wsa:Action'] || parsed?.Header?.wsa__Action;
-        const action = typeof actionRaw === 'string' ? actionRaw : actionRaw?.$value || actionRaw?._; 
+        const parsed = typeof inputXml === 'string' && this.wsdl?.xmlToObject
+          ? this.wsdl.xmlToObject(inputXml)
+          : null;
+
+        const actionRaw =
+          parsed?.Header?.Action ||
+          parsed?.Header?.['wsa:Action'] ||
+          parsed?.Header?.wsa__Action;
+
+        const action =
+          typeof actionRaw === 'string'
+            ? actionRaw
+            : actionRaw?.$value || actionRaw?._;
 
         if (typeof action === 'string') {
-          if (action.indexOf('SubscriptionManager') !== -1 || action.indexOf('/Renew') !== -1 || action.indexOf('/Unsubscribe') !== -1) {
+          if (
+            action.indexOf('SubscriptionManager') !== -1 ||
+            action.indexOf('/Renew') !== -1 ||
+            action.indexOf('/Unsubscribe') !== -1
+          ) {
             actionHint = 'SubscriptionManager';
-          } else if (action.indexOf('PullPointSubscription') !== -1 || action.indexOf('/PullMessages') !== -1) {
+          } else if (
+            action.indexOf('PullPointSubscription') !== -1 ||
+            action.indexOf('/PullMessages') !== -1
+          ) {
             actionHint = 'PullPointSubscription';
           }
         }
@@ -143,9 +178,11 @@ class SoapService {
         actionHint = null;
       }
 
-      const hasSubscriptionQuery = parsedUrl?.query && parsedUrl.query.subscription !== undefined;
+      const hasSubscriptionQuery =
+        !!parsedUrl?.query && parsedUrl.query.subscription !== undefined;
 
-      let restorePorts: { service: any; ports: any }[] = [];
+      const restorePorts: { service: any; ports: any }[] = [];
+
       if (hasSubscriptionQuery && this.wsdl && this.wsdl.definitions && this.wsdl.definitions.services) {
         for (const serviceName of Object.keys(this.wsdl.definitions.services)) {
           const service = this.wsdl.definitions.services[serviceName];
@@ -153,8 +190,11 @@ class SoapService {
           if (!ports || !ports.PullPointSubscription) continue;
 
           const originalPorts = service.ports;
-          const prioritized = [] as string[];
-          if (actionHint) prioritized.push(actionHint);
+          const prioritized: string[] = [];
+
+          if (actionHint) {
+            prioritized.push(actionHint);
+          }
           prioritized.push('PullPointSubscription', 'SubscriptionManager');
 
           const seen: Record<string, boolean> = {};
@@ -166,6 +206,7 @@ class SoapService {
               seen[key] = true;
             }
           }
+
           for (const key of Object.keys(ports)) {
             if (!seen[key]) {
               reordered[key] = ports[key];
@@ -191,22 +232,30 @@ class SoapService {
   start() {
     this.starting();
 
-    utils.log.info("Binding %s to http://%s:%s%s", (<TypeConstructor>this.constructor).name, utils.getIpAddress(), this.config.ServicePort, this.serviceOptions.path);
+    utils.log.info(
+      "Binding %s to http://%s:%s%s",
+      (<TypeConstructor>this.constructor).name,
+      utils.getIpAddress(),
+      this.config.ServicePort,
+      this.serviceOptions.path
+    );
+
     this.serviceOptions.callback = (err: any, res: any) => {
       this._started();
     };
+
     this.serviceInstance = soap.listen(this.webserver, this.serviceOptions);
 
     this.ensureWsdlPorts();
 
     this.serviceInstance.on("request", (request: any, methodName: string) => {
-      utils.log.debug('%s received request %s', (<TypeConstructor>this.constructor).name, methodName);
+      utils.log.debug(
+        '%s received request %s',
+        (<TypeConstructor>this.constructor).name,
+        methodName
+      );
 
-      // Use the '=>' notation so 'this' refers to the class we are in
-      // ONVIF allows GetSystemDateAndTime to be sent with no authenticaton header
-      // So we check the header and check authentication in this function
-
-      // utils.log.info('received soap header');
+      // GetSystemDateAndTime is allowed without authentication.
       if (methodName === "GetSystemDateAndTime") return;
 
       const authDebug = !!this.config.authDebug;
@@ -214,7 +263,10 @@ class SoapService {
 
       if (authDisabled) {
         if (authDebug) {
-          utils.log.info('Auth debug (%s): authentication disabled; skipping checks', methodName);
+          utils.log.info(
+            'Auth debug (%s): authentication disabled; skipping checks',
+            methodName
+          );
         }
         return;
       }
@@ -224,72 +276,119 @@ class SoapService {
         try {
           token = request.Header.Security.UsernameToken;
         } catch (err) {
-          utils.log.info('No Username/Password (ws-security) supplied for ' + methodName);
+          utils.log.info(
+            'No Username/Password (ws-security) supplied for ' + methodName
+          );
           if (authDebug) {
-            utils.log.info('Auth debug (%s): SOAP header received: %j', methodName, request && request.Header);
+            utils.log.info(
+              'Auth debug (%s): SOAP header received: %j',
+              methodName,
+              request && request.Header
+            );
           }
           throw NOT_IMPLEMENTED;
         }
-        var user = token.Username;
-        var password = (token.Password.$value || token.Password);
-        var passwordType = (token.Password.attributes && token.Password.attributes.Type) || '';
-        var nonce = (token.Nonce && (token.Nonce.$value || token.Nonce)) || '';
-        var created = token.Created;
 
-        var onvif_username = this.config.Username;
-        var onvif_password = this.config.Password;
+        const user = token.Username;
+        const password = (token.Password.$value || token.Password);
+        const passwordType =
+          (token.Password.attributes && token.Password.attributes.Type) || '';
+        const nonce =
+          (token.Nonce && (token.Nonce.$value || token.Nonce)) || '';
+        const created = token.Created;
+
+        const onvif_username = this.config.Username;
+        const onvif_password = this.config.Password;
 
         if (authDebug) {
-          utils.log.info('Auth debug (%s): received token username=%s password=%s nonce=%s created=%s type=%s',
-            methodName, user, password, nonce, created, passwordType || '');
+          utils.log.info(
+            'Auth debug (%s): received token username=%s password=%s nonce=%s created=%s type=%s',
+            methodName,
+            user,
+            password,
+            nonce,
+            created,
+            passwordType || ''
+          );
         }
 
-        var password_ok = false;
+        let password_ok = false;
 
-        // If password type is PasswordText (or nonce/created are missing) fall back to plain comparison
-        var expectsDigest = passwordType.indexOf('PasswordDigest') >= 0 || (nonce && created);
-        var schemeUsed = expectsDigest ? 'PasswordDigest' : 'PasswordText';
+        const expectsDigest =
+          passwordType.indexOf('PasswordDigest') >= 0 || (nonce && created);
+        const schemeUsed = expectsDigest ? 'PasswordDigest' : 'PasswordText';
 
         if (expectsDigest) {
-          // digest = base64 ( sha1 ( nonce + created + onvif_password ) )
-          var crypto = require('crypto');
-          var pwHash = crypto.createHash('sha1');
-          var rawNonce = Buffer.from(nonce || '', 'base64')
-          var combined_data = Buffer.concat([rawNonce,
-            Buffer.from(created, 'ascii'), Buffer.from(onvif_password, 'ascii')]);
+          const crypto = require('crypto');
+          const pwHash = crypto.createHash('sha1');
+          const rawNonce = Buffer.from(nonce || '', 'base64');
+          const combined_data = Buffer.concat([
+            rawNonce,
+            Buffer.from(created, 'ascii'),
+            Buffer.from(onvif_password, 'ascii')
+          ]);
           pwHash.update(combined_data);
-          var generated_password = pwHash.digest('base64');
+          const generated_password = pwHash.digest('base64');
 
           if (authDebug) {
-            utils.log.info('Auth debug (%s): expected username=%s, configured password=%s, generated digest=%s',
-              methodName, onvif_username, onvif_password, generated_password);
+            utils.log.info(
+              'Auth debug (%s): expected username=%s, configured password=%s, generated digest=%s',
+              methodName,
+              onvif_username,
+              onvif_password,
+              generated_password
+            );
           }
 
-          password_ok = (user === onvif_username && password === generated_password);
+          password_ok =
+            (user === onvif_username && password === generated_password);
         } else {
           if (authDebug) {
-            utils.log.info('Auth debug (%s): using PasswordText comparison', methodName);
+            utils.log.info(
+              'Auth debug (%s): using PasswordText comparison',
+              methodName
+            );
           }
-          password_ok = (user === onvif_username && password === onvif_password);
+          password_ok =
+            (user === onvif_username && password === onvif_password);
         }
 
         if (authDebug) {
-          utils.log.info('Auth debug (%s): scheme=%s type=%s passed=%s', methodName, schemeUsed, passwordType || '', password_ok);
+          utils.log.info(
+            'Auth debug (%s): scheme=%s type=%s passed=%s',
+            methodName,
+            schemeUsed,
+            passwordType || '',
+            password_ok
+          );
         }
 
-        if (password_ok == false) {
-          utils.log.info('Invalid username/password with ' + methodName);
+        if (!password_ok) {
+          utils.log.info(
+            'Invalid username/password with ' + methodName
+          );
           throw NOT_IMPLEMENTED;
         }
-      };
+      }
     });
 
     this.serviceInstance.on('soapError', (error: any, eid: string) => {
-      utils.log.error('%s received error %s', (<TypeConstructor>this.constructor).name, eid);
+      utils.log.error(
+        '%s received error %s',
+        (<TypeConstructor>this.constructor).name,
+        eid
+      );
     });
+
     this.serviceInstance.log = (type: string, data: any) => {
-      if (this.config.logSoapCalls)
-        utils.log.debug('%s - Calltype : %s, Data : %s', (<TypeConstructor>this.constructor).name, type, data);
+      if (this.config.logSoapCalls) {
+        utils.log.debug(
+          '%s - Calltype : %s, Data : %s',
+          (<TypeConstructor>this.constructor).name,
+          type,
+          data
+        );
+      }
     };
   }
 
@@ -308,7 +407,9 @@ class SoapService {
       if (!service?.ports) continue;
 
       if (!servicesImplementation[serviceName]) {
-        throw new Error(`SOAP implementation missing for service '${serviceName}'`);
+        throw new Error(
+          `SOAP implementation missing for service '${serviceName}'`
+        );
       }
 
       for (const portName of Object.keys(service.ports)) {
@@ -318,9 +419,13 @@ class SoapService {
           port.location = this.normalizeAddress(port.location);
         }
 
-        const bindingName = (port?.binding && (port.binding.$name || port.binding.name)) || '';
+        const bindingName =
+          (port?.binding && (port.binding.$name || port.binding.name)) || '';
+
         if (bindingName && !bindings[bindingName]) {
-          throw new Error(`WSDL binding '${bindingName}' missing for port '${portName}' in service '${serviceName}'`);
+          throw new Error(
+            `WSDL binding '${bindingName}' missing for port '${portName}' in service '${serviceName}'`
+          );
         }
       }
     }
@@ -335,10 +440,12 @@ class SoapService {
 
   _started() {
     this.isStarted = true;
-    for (var callback of this.startedCallbacks)
+    for (const callback of this.startedCallbacks) {
       callback();
+    }
     this.startedCallbacks = [];
     this.started();
   }
 }
+
 export = SoapService;

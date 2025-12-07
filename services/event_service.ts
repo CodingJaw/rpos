@@ -87,11 +87,6 @@ class EventService extends SoapService {
     return `${this.serviceAddress()}?${SUBSCRIPTION_QUERY}=${suffix}`;
   }
 
-  private subscriptionAddress(id?: string) {
-    const suffix = id ? `${id}` : '';
-    return `${this.serviceAddress()}?${SUBSCRIPTION_QUERY}=${suffix}`;
-  }
-
   private buildWsdlWithService(basePath: string, serviceXml: string) {
     const baseWsdl = fs.readFileSync(basePath, 'utf8');
     const insertAt = baseWsdl.lastIndexOf(DEFINITIONS_CLOSE_TAG);
