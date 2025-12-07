@@ -9,6 +9,8 @@ import { Server } from 'http';
 import PTZDriver = require('../lib/PTZDriver');
 
 var utils = Utils.utils;
+const NAMESPACE = "http://www.onvif.org/ver20/ptz/wsdl";
+const PATH = '/onvif/ptz_service';
 
 class PTZService extends SoapService {
   ptz_service: any;
@@ -28,9 +30,9 @@ class PTZService extends SoapService {
     this.ptz_driver = ptz_driver;
 
     this.serviceOptions = {
-      path: '/onvif/ptz_service',
+      path: PATH,
       services: this.ptz_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/ptz_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/ptz_service.wsdl'),
       uri: 'wsdl/onvif/services/ptz_service.wsdl',
       callback: () => console.log('ptz_service started')
     };
@@ -43,6 +45,14 @@ class PTZService extends SoapService {
     this.extendService();
   }
 
+  static get namespace() {
+    return NAMESPACE;
+  }
+
+  static get path() {
+    return PATH;
+  }
+
   leftPad(number, targetLength) {
     var output = number + '';
     while (output.length < targetLength) {
@@ -52,7 +62,12 @@ class PTZService extends SoapService {
   }
 
   extendService() {
-    var port = this.ptz_service.PTZService.PTZ;
+    const service = this.ptz_service.PTZService || this.ptz_service;
+    if (!service || !service.PTZ) {
+      throw new Error('PTZService stub is missing PTZ bindings');
+    }
+
+    var port = service.PTZ;
     
     var node = { 
       attributes : {

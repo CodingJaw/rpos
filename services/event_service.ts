@@ -79,7 +79,12 @@ class EventService extends SoapService {
   }
 
   private serviceAddress() {
-    return `http://${utils.getIpAddress()}:${this.config.ServicePort}${EventService.path}`;
+    return this.endpointAddress(EventService.path);
+  }
+
+  private subscriptionAddress(id?: string) {
+    const suffix = id ? `${id}` : '';
+    return `${this.serviceAddress()}?${SUBSCRIPTION_QUERY}=${suffix}`;
   }
 
   private subscriptionAddress(id?: string) {

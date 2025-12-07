@@ -41,6 +41,7 @@ import ImagingService = require("./services/imaging_service");
 import DiscoveryService = require("./services/discovery_service");
 import EventService = require("./services/event_service");
 import { IOState } from "./lib/io_state";
+import { ServiceRegistry, buildXAddr } from "./lib/service_registry";
 
 import { exit } from "process";
 
@@ -124,20 +125,157 @@ for (var i in config.DeviceInformation) {
 
 let webserver = express();
 let httpserver = http.createServer(webserver);
-httpserver.listen(config.ServicePort);
 
 let ptz_driver = new PTZDriver(config);
 
 let camera = new Camera(config, webserver);
 const ioState = new IOState(4, 4);
+const serviceRegistry = new ServiceRegistry();
 let deviceio_service = new DeviceIOService(config, httpserver, ptz_driver.process_ptz_command, ioState);
 let ptz_service = new PTZService(config, httpserver, ptz_driver.process_ptz_command, ptz_driver);
 let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_ptz_command);
 let media_service = new MediaService(config, httpserver, camera, ptz_service); // note ptz_service dependency
 let media2_service = new Media2Service(config, httpserver, camera, ptz_service);
-let device_service = new DeviceService(config, httpserver, media_service, ptz_driver.process_ptz_command);
-let discovery_service = new DiscoveryService(config);
 let event_service = new EventService(config, httpserver, ioState);
+let device_service = new DeviceService(config, httpserver, media_service, ptz_driver.process_ptz_command, serviceRegistry);
+let discovery_service = new DiscoveryService(config);
+
+serviceRegistry.register({
+  Namespace: DeviceService.namespace,
+  XAddr: buildXAddr(DeviceService.path, config),
+  Capabilities: {
+    Network: {
+      IPFilter: "true",
+      ZeroConfiguration: "true",
+      IPVersion6: "true",
+      DynDNS: "true",
+      Dot11Configuration: "false",
+      Dot1XConfigurations: "0",
+      HostnameFromDHCP: "true",
+      NTP: "1",
+      DHCPv6: "true"
+    },
+    Security: {
+      "TLS1.0": "true",
+      "TLS1.1": "true",
+      "TLS1.2": "true",
+      OnboardKeyGeneration: "false",
+      AccessPolicyConfig: "false",
+      DefaultAccessPolicy: "true",
+      Dot1X: "false",
+      RemoteUserHandling: "false",
+      "X.509Token": "false",
+      SAMLToken: "false",
+      KerberosToken: "false",
+      UsernameToken: "true",
+      HttpDigest: "true",
+      RELToken: "false",
+      SupportedEAPMethods: "0",
+      MaxUsers: "32",
+      MaxUserNameLength: "32",
+      MaxPasswordLength: "16"
+    },
+    System: {
+      DiscoveryResolve: "false",
+      DiscoveryBye: "true",
+      RemoteDiscovery: "false",
+      SystemBackup: "false",
+      SystemLogging: "true",
+      FirmwareUpgrade: "true",
+      HttpFirmwareUpgrade: "true",
+      HttpSystemBackup: "false",
+      HttpSystemLogging: "false",
+      HttpSupportInformation: "false",
+      StorageConfiguration: "true",
+      MaxStorageConfigurations: "8"
+    }
+  },
+  Version: {
+    Major: 18,
+    Minor: 12
+  }
+});
+
+serviceRegistry.register({
+  Namespace: DeviceIOService.namespace,
+  XAddr: buildXAddr(DeviceIOService.path, config),
+  Capabilities: {
+    VideoSources: "1",
+    VideoOutputs: "0",
+    AudioSources: "1",
+    AudioOutputs: "1",
+    RelayOutputs: ioState.digitalOutputs.length.toString(),
+    DigitalInputs: ioState.digitalInputs.length.toString(),
+    SerialPorts: "1",
+    DigitalInputOptions: "true"
+  },
+  Version: {
+    Major: 16,
+    Minor: 12
+  }
+});
+
+serviceRegistry.register({
+  Namespace: MediaService.namespace,
+  XAddr: buildXAddr(MediaService.path, config),
+  Capabilities: media_service.getPort().GetServiceCapabilities(),
+  Version: {
+    Major: 2,
+    Minor: 60
+  }
+});
+
+serviceRegistry.register({
+  Namespace: Media2Service.namespace,
+  XAddr: buildXAddr(Media2Service.path, config),
+  Capabilities: {
+    SnapshotUri: "true",
+    Rotation: "false",
+    VideoSourceMode: "false",
+    OSD: "true",
+    Mask: "true",
+    SourceMask: "true"
+  },
+  Version: {
+    Major: 16,
+    Minor: 12
+  }
+});
+
+serviceRegistry.register({
+  Namespace: EventService.namespace,
+  XAddr: buildXAddr(EventService.path, config),
+  Capabilities: {
+    WSSubscriptionPolicySupport: "false",
+    WSPullPointSupport: "true",
+    WSPausableSubscriptionManagerInterfaceSupport: "false"
+  },
+  Version: {
+    Major: 20,
+    Minor: 12
+  }
+});
+
+serviceRegistry.register({
+  Namespace: ImagingService.namespace,
+  XAddr: buildXAddr(ImagingService.path, config),
+  Capabilities: {
+    ImageStabilization: "false"
+  },
+  Version: {
+    Major: 16,
+    Minor: 6
+  }
+});
+
+serviceRegistry.register({
+  Namespace: PTZService.namespace,
+  XAddr: buildXAddr(PTZService.path, config),
+  Version: {
+    Major: 2,
+    Minor: 5
+  }
+});
 
 ioState.onInputChange((index, value) => {
   event_service.pushIOEvent("input", index, value);
@@ -147,11 +285,12 @@ ioState.onOutputChange((index, value) => {
   event_service.pushIOEvent("output", index, value);
 });
 
-device_service.start();
 deviceio_service.start();
 media_service.start();
 media2_service.start();
 ptz_service.start();
 imaging_service.start();
-discovery_service.start();
 event_service.start();
+device_service.start();
+httpserver.listen(config.ServicePort);
+discovery_service.start();

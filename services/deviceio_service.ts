@@ -9,6 +9,8 @@ import { Server } from 'http';
 import { IOState } from '../lib/io_state';
 import ip = require('ip');
 var utils = Utils.utils;
+const NAMESPACE = "http://www.onvif.org/ver10/deviceIO/wsdl";
+const PATH = '/onvif/deviceio_service';
 
 class DeviceIOService extends SoapService {
   device_service: any;
@@ -23,14 +25,22 @@ class DeviceIOService extends SoapService {
     this.ioState = ioState;
 
     this.serviceOptions = {
-      path: '/onvif/deviceio_service',
+      path: PATH,
       services: this.device_service,
-      xml: fs.readFileSync('./wsdl/onvif/services/deviceio_service.wsdl', 'utf8'),
+      xml: this.loadWsdlWithAddress('./wsdl/onvif/services/deviceio_service.wsdl'),
       uri: 'wsdl/onvif/services/deviceio_service.wsdl',
       callback: () => console.log('deviceio_service started')
     };
 
     this.extendService();
+  }
+
+  static get namespace() {
+    return NAMESPACE;
+  }
+
+  static get path() {
+    return PATH;
   }
 
   extendService() {
