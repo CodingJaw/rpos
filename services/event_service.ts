@@ -288,6 +288,9 @@ class EventService extends SoapService {
     const topicBase = type === 'input' ? 'DigitalInput' : 'RelayOutput';
     const topic = `tns1:Device/IO/${topicBase}/${index}`;
 
+    const sourceItemName = type === 'input' ? 'InputToken' : 'RelayToken';
+    const sourceItemValue = type === 'input' ? `Input${index}` : `Relay${index}`;
+
     const message = {
       'wsnt:NotificationMessage': {
         'wsnt:Topic': {
@@ -298,6 +301,14 @@ class EventService extends SoapService {
         },
         'wsnt:Message': {
           'tt:Message': {
+            'tt:Source': {
+              'tt:SimpleItem': {
+                attributes: {
+                  Name: sourceItemName,
+                  Value: sourceItemValue
+                }
+              }
+            },
             'tt:Data': {
               'tt:SimpleItem': {
                 attributes: {
@@ -430,7 +441,17 @@ class EventService extends SoapService {
       }
       const value = typeof expr === 'string' ? expr : expr?.$value || expr?._ || expr?.['#'] || expr;
       if (typeof value !== 'string') return false;
-      return value.trim() === topic.trim();
+      const trimmed = value.trim();
+      const candidate = topic.trim();
+
+      if (trimmed === candidate) {
+        return true;
+      }
+
+      // Allow parent topic expressions (e.g., tns1:Device/IO/RelayOutput) to match child topics
+      // (e.g., tns1:Device/IO/RelayOutput/2) so DVRs that subscribe to the relay subtree receive
+      // state changes for all outputs.
+      return candidate.startsWith(trimmed.endsWith('/') ? trimmed : `${trimmed}/`);
     });
   }
 
