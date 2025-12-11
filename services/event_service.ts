@@ -19,6 +19,7 @@ interface SubscriptionRecord {
   reference: string;
   createdAt: Date;
   terminationTime: Date;
+  paused: boolean;
   filters?: any;
   notifications: NotificationRecord[];
   cursor: number;
@@ -42,7 +43,7 @@ class EventService extends SoapService {
     this.event_service = require('./stubs/event_service.js').EventService;
     this.ioState = ioState;
 
-        this.serviceOptions = {
+    this.serviceOptions = {
       path: EventService.path,
       services: this.event_service,
       xml: this.buildWsdlWithService(
@@ -52,6 +53,15 @@ class EventService extends SoapService {
         `      <soap:address location="${this.serviceAddress()}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="PullPointSubscription" binding="tev:PullPointSubscriptionBinding">\n` +
+        `      <soap:address location="${this.subscriptionAddress('{subscription-id}')}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="PullPoint" binding="tev:PullPointBinding">\n` +
+        `      <soap:address location="${this.subscriptionAddress('{subscription-id}')}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="CreatePullPoint" binding="tev:CreatePullPointBinding">\n` +
+        `      <soap:address location="${this.serviceAddress()}" />\n` +
+        `    </wsdl:port>\n` +
+        `    <wsdl:port name="PausableSubscriptionManager" binding="tev:PausableSubscriptionManagerBinding">\n` +
         `      <soap:address location="${this.subscriptionAddress('{subscription-id}')}" />\n` +
         `    </wsdl:port>\n` +
         `    <wsdl:port name="SubscriptionManager" binding="tev:SubscriptionManagerBinding">\n` +
@@ -106,7 +116,10 @@ class EventService extends SoapService {
 
     const eventPort = service.EventPort || (service.EventPort = {});
     const pullPoint = service.PullPointSubscription || (service.PullPointSubscription = {});
+    const pullPointBinding = service.PullPointBinding || (service.PullPointBinding = {});
+    const createPullPoint = service.CreatePullPoint || (service.CreatePullPoint = {});
     const subscriptionManager = service.SubscriptionManager || (service.SubscriptionManager = {});
+    const pausableSubscriptionManager = service.PausableSubscriptionManager || (service.PausableSubscriptionManager = {});
     const notificationProducer = service.NotificationProducer || (service.NotificationProducer = {});
 
     if (!eventPort || !pullPoint || !subscriptionManager || !notificationProducer) {
@@ -118,7 +131,7 @@ class EventService extends SoapService {
         attributes: {
           WSSubscriptionPolicySupport: false,
           WSPullPointSupport: true,
-          WSPausableSubscriptionManagerInterfaceSupport: false,
+          WSPausableSubscriptionManagerInterfaceSupport: true,
           MaxNotificationProducers: 1,
           MaxPullPoints: 1,
           PersistentNotificationStorage: false,
@@ -162,6 +175,14 @@ class EventService extends SoapService {
     const pullMessages = (args: any, _cb: any, headers: any, req: any) => {
       const subscription = this.getSubscription(args, headers, req);
 
+      if (subscription.paused) {
+        return {
+          CurrentTime: new Date().toISOString(),
+          TerminationTime: subscription.terminationTime.toISOString(),
+          NotificationMessage: []
+        };
+      }
+
       const limit = Math.max(0, args?.MessageLimit || 0);
       const available = subscription.notifications.length - subscription.cursor;
       const count = limit > 0 ? Math.min(limit, available) : available;
@@ -186,6 +207,7 @@ class EventService extends SoapService {
 
     pullPoint.PullMessages = pullMessages;
     eventPort.PullMessages = pullMessages;
+    pullPointBinding.GetMessages = pullMessages;
 
     const seek = (args: any, _cb: any, headers: any, req: any) => {
       const subscription = this.getSubscription(args, headers, req);
@@ -219,6 +241,7 @@ class EventService extends SoapService {
 
     pullPoint.Unsubscribe = unsubscribe;
     eventPort.Unsubscribe = unsubscribe;
+    pullPointBinding.DestroyPullPoint = unsubscribe;
 
     subscriptionManager.Renew = (args: any, _cb: any, headers: any, req: any) => {
       const subscription = this.getSubscription(args, headers, req);
@@ -228,10 +251,36 @@ class EventService extends SoapService {
     };
 
     subscriptionManager.Unsubscribe = unsubscribe;
+    pausableSubscriptionManager.Renew = subscriptionManager.Renew;
+    pausableSubscriptionManager.Unsubscribe = unsubscribe;
+    pausableSubscriptionManager.PauseSubscription = (args: any, _cb: any, headers: any, req: any) => {
+      const subscription = this.getSubscription(args, headers, req);
+      subscription.paused = true;
+      return {};
+    };
+
+    pausableSubscriptionManager.ResumeSubscription = (args: any, _cb: any, headers: any, req: any) => {
+      const subscription = this.getSubscription(args, headers, req);
+      subscription.paused = false;
+      return {};
+    };
 
     notificationProducer.Subscribe = (args: any /*, cb, headers*/ ) => {
       const { response } = this.registerSubscription(args?.Filter, args?.InitialTerminationTime);
       return response;
+    };
+
+    pullPointBinding.Notify = () => ({ });
+
+    createPullPoint.CreatePullPoint = (args: any /*, cb, headers*/ ) => {
+      const { subscription, response } = this.registerSubscription(args?.Filter, args?.InitialTerminationTime);
+      return {
+        PullPoint: {
+          Address: subscription.reference
+        },
+        CurrentTime: response.CurrentTime,
+        TerminationTime: response.TerminationTime
+      };
     };
   }
 
@@ -330,6 +379,7 @@ class EventService extends SoapService {
       createdAt: now,
       terminationTime: termination,
       filters,
+      paused: false,
       notifications: [],
       cursor: 0
     };
