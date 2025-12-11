@@ -291,6 +291,15 @@ class EventService extends SoapService {
     const sourceItemName = type === 'input' ? 'InputToken' : 'RelayToken';
     const sourceItemValue = type === 'input' ? `Input${index}` : `Relay${index}`;
 
+    const sourceSimpleItems = [
+      {
+        attributes: {
+          Name: sourceItemName,
+          Value: sourceItemValue
+        }
+      }
+    ];
+
     const stateSimpleItems: any[] = [];
 
     if (type === 'output') {
@@ -325,13 +334,10 @@ class EventService extends SoapService {
         },
         'wsnt:Message': {
           'tt:Message': {
+            'tt:UtcTime': new Date().toISOString(),
+            'tt:PropertyOperation': 'Changed',
             'tt:Source': {
-              'tt:SimpleItem': {
-                attributes: {
-                  Name: sourceItemName,
-                  Value: sourceItemValue
-                }
-              }
+              'tt:SimpleItem': sourceSimpleItems
             },
             'tt:Data': {
               'tt:SimpleItem': stateSimpleItems
