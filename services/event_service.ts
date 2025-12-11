@@ -291,8 +291,29 @@ class EventService extends SoapService {
     const sourceItemName = type === 'input' ? 'InputToken' : 'RelayToken';
     const sourceItemValue = type === 'input' ? `Input${index}` : `Relay${index}`;
 
-    const stateItemName = type === 'output' ? 'LogicalState' : 'State';
-    const stateItemValue = type === 'output' ? (value ? 'active' : 'inactive') : value.toString();
+    const stateSimpleItems: any[] = [];
+
+    if (type === 'output') {
+      stateSimpleItems.push({
+        attributes: {
+          Name: 'LogicalState',
+          Value: value ? 'active' : 'inactive'
+        }
+      });
+      stateSimpleItems.push({
+        attributes: {
+          Name: 'State',
+          Value: value.toString()
+        }
+      });
+    } else {
+      stateSimpleItems.push({
+        attributes: {
+          Name: 'State',
+          Value: value.toString()
+        }
+      });
+    }
 
     const message = {
       'wsnt:NotificationMessage': {
@@ -313,12 +334,7 @@ class EventService extends SoapService {
               }
             },
             'tt:Data': {
-              'tt:SimpleItem': {
-                attributes: {
-                  Name: stateItemName,
-                  Value: stateItemValue
-                }
-              }
+              'tt:SimpleItem': stateSimpleItems
             }
           }
         }
