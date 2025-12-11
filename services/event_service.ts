@@ -291,6 +291,9 @@ class EventService extends SoapService {
     const sourceItemName = type === 'input' ? 'InputToken' : 'RelayToken';
     const sourceItemValue = type === 'input' ? `Input${index}` : `Relay${index}`;
 
+    const stateItemName = type === 'output' ? 'LogicalState' : 'State';
+    const stateItemValue = type === 'output' ? (value ? 'active' : 'inactive') : value.toString();
+
     const message = {
       'wsnt:NotificationMessage': {
         'wsnt:Topic': {
@@ -312,8 +315,8 @@ class EventService extends SoapService {
             'tt:Data': {
               'tt:SimpleItem': {
                 attributes: {
-                  Name: 'State',
-                  Value: value.toString()
+                  Name: stateItemName,
+                  Value: stateItemValue
                 }
               }
             }
