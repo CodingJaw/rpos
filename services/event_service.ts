@@ -324,6 +324,8 @@ class EventService extends SoapService {
       });
     }
 
+    const nowIso = new Date().toISOString();
+
     const message = {
       'wsnt:NotificationMessage': {
         'wsnt:Topic': {
@@ -334,8 +336,10 @@ class EventService extends SoapService {
         },
         'wsnt:Message': {
           'tt:Message': {
-            'tt:UtcTime': new Date().toISOString(),
-            'tt:PropertyOperation': 'Changed',
+            attributes: {
+              UtcTime: nowIso,
+              PropertyOperation: 'Changed'
+            },
             'tt:Source': {
               'tt:SimpleItem': sourceSimpleItems
             },
