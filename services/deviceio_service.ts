@@ -178,6 +178,15 @@ class DeviceIOService extends SoapService {
     const app = this.getExpressApp();
     if (!app) return;
 
+    // Read-only helpers
+    app.get('/api/io/input', (_req: any, res: any) => {
+      res.json({ inputs: this.ioState.digitalInputs });
+    });
+
+    app.get('/api/io/output', (_req: any, res: any) => {
+      res.json({ outputs: this.ioState.digitalOutputs });
+    });
+
     app.get('/api/io/inputs', (_req: any, res: any) => {
       res.json({ inputs: this.ioState.digitalInputs });
     });
@@ -193,7 +202,21 @@ class DeviceIOService extends SoapService {
       res.json({ index, value });
     });
 
+    app.get('/api/io/input/:id/:state', (req: any, res: any) => {
+      const index = this.parseInputIndex(`Input${req.params.id}`);
+      const value = this.parseBoolean(req.params.state);
+      this.ioState.setInput(index, value);
+      res.json({ index, value });
+    });
+
     app.post('/api/io/output/:id/:state', (req: any, res: any) => {
+      const index = this.parseRelayIndex(`Relay${req.params.id}`);
+      const value = this.parseBoolean(req.params.state);
+      this.ioState.setOutput(index, value);
+      res.json({ index, value });
+    });
+
+    app.get('/api/io/output/:id/:state', (req: any, res: any) => {
       const index = this.parseRelayIndex(`Relay${req.params.id}`);
       const value = this.parseBoolean(req.params.state);
       this.ioState.setOutput(index, value);
