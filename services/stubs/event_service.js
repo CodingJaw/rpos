@@ -27,9 +27,23 @@ exports.EventService = {
       SetSynchronizationPoint: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; },
       Unsubscribe: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; }
     },
+    PullPointBinding: {
+      GetMessages: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; },
+      DestroyPullPoint: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; },
+      Notify: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; }
+    },
+    CreatePullPoint: {
+      CreatePullPoint: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; }
+    },
     SubscriptionManager: {
       Renew: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; },
       Unsubscribe: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; }
+    },
+    PausableSubscriptionManager: {
+      Renew: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; },
+      Unsubscribe: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; },
+      PauseSubscription: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; },
+      ResumeSubscription: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; }
     },
     NotificationProducer: {
       Subscribe: function(args /*, cb, headers*/) { throw NOT_IMPLEMENTED; }

@@ -16,6 +16,7 @@ class DeviceIOService extends SoapService {
   device_service: any;
   callback: any;
   ioState: IOState;
+  private inputIdleStates: string[];
 
   constructor(config: rposConfig, server: Server, callback: any, ioState: IOState) {
     super(config, server);
@@ -23,6 +24,7 @@ class DeviceIOService extends SoapService {
     this.device_service = require('./stubs/deviceio_service.js').DeviceIOService;
     this.callback = callback;
     this.ioState = ioState;
+    this.inputIdleStates = Array.from({ length: this.ioState.digitalInputs.length }, () => 'open');
 
     this.serviceOptions = {
       path: PATH,
@@ -66,7 +68,7 @@ class DeviceIOService extends SoapService {
         attributes: {
           token: `Input${index}`
         },
-        IdleState: 'open'
+        IdleState: this.inputIdleStates[index] || 'open'
       }))
     });
 
@@ -102,6 +104,31 @@ class DeviceIOService extends SoapService {
       this.ioState.setOutput(index, active);
       return {};
     };
+
+    port.SetDigitalInputConfigurations = (args: any) => {
+      const inputs = Array.isArray(args?.DigitalInputs)
+        ? args.DigitalInputs
+        : args?.DigitalInputs
+          ? [args.DigitalInputs]
+          : [];
+
+      inputs.forEach((inputConfig: any) => {
+        const token = inputConfig?.attributes?.token || inputConfig?.['attributes']?.['token'];
+        const index = this.parseInputIndex(token);
+        const idle = inputConfig?.IdleState;
+        if (typeof idle === 'string' && idle.length > 0) {
+          this.inputIdleStates[index] = idle;
+        }
+      });
+
+      return {};
+    };
+
+    port.GetDigitalInputConfigurationOptions = () => ({
+      DigitalInputOptions: {
+        IdleState: ['open', 'closed']
+      }
+    });
 
     this.registerDebugApi();
   }
@@ -151,6 +178,15 @@ class DeviceIOService extends SoapService {
     const app = this.getExpressApp();
     if (!app) return;
 
+    // Read-only helpers
+    app.get('/api/io/input', (_req: any, res: any) => {
+      res.json({ inputs: this.ioState.digitalInputs });
+    });
+
+    app.get('/api/io/output', (_req: any, res: any) => {
+      res.json({ outputs: this.ioState.digitalOutputs });
+    });
+
     app.get('/api/io/inputs', (_req: any, res: any) => {
       res.json({ inputs: this.ioState.digitalInputs });
     });
@@ -166,7 +202,21 @@ class DeviceIOService extends SoapService {
       res.json({ index, value });
     });
 
+    app.get('/api/io/input/:id/:state', (req: any, res: any) => {
+      const index = this.parseInputIndex(`Input${req.params.id}`);
+      const value = this.parseBoolean(req.params.state);
+      this.ioState.setInput(index, value);
+      res.json({ index, value });
+    });
+
     app.post('/api/io/output/:id/:state', (req: any, res: any) => {
+      const index = this.parseRelayIndex(`Relay${req.params.id}`);
+      const value = this.parseBoolean(req.params.state);
+      this.ioState.setOutput(index, value);
+      res.json({ index, value });
+    });
+
+    app.get('/api/io/output/:id/:state', (req: any, res: any) => {
       const index = this.parseRelayIndex(`Relay${req.params.id}`);
       const value = this.parseBoolean(req.params.state);
       this.ioState.setOutput(index, value);

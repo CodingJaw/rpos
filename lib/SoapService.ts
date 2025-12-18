@@ -123,6 +123,29 @@ class SoapService {
     if (SoapService.subscriptionBindingPatched) return;
     SoapService.subscriptionBindingPatched = true;
 
+    try {
+      const wsdlModule = require('soap/lib/wsdl.js');
+      const WSDLClass = wsdlModule && wsdlModule.WSDL;
+      if (WSDLClass && !(WSDLClass as any)._rposSafeDescribe) {
+        WSDLClass.prototype.describeServices = function describeServicesSafe() {
+          const services: any = {};
+          for (const name in this.services) {
+            const service = (this.services as any)[name];
+            try {
+              services[name] = service.description(this.definitions);
+            } catch (err) {
+              utils.log.warn('Skipping service %s during description: %s', name, err?.message || err);
+            }
+          }
+          return services;
+        };
+
+        (WSDLClass as any)._rposSafeDescribe = true;
+      }
+    } catch (err) {
+      utils.log.warn('Failed to patch soap describeServices: %s', err?.message || err);
+    }
+
     if (!soap || !soap.Server || typeof soap.Server.prototype._process !== 'function') {
       return;
     }
