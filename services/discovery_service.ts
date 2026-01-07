@@ -115,7 +115,7 @@ class DiscoveryService {
                     onvif://www.onvif.org/name/${encodeURIComponent(this.config.DeviceInformation.Manufacturer + ' ' + this.config.DeviceInformation.Model)}
                     onvif://www.onvif.org/location/
                   </d:Scopes>
-                  <d:XAddrs>http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/device_service</d:XAddrs>
+                  <d:XAddrs>http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/device_service http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/event_service</d:XAddrs>
                   <d:MetadataVersion>1</d:MetadataVersion>
               </d:ProbeMatch>
               </d:ProbeMatches>
