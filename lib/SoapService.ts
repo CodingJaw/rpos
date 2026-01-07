@@ -77,15 +77,46 @@ class SoapService {
       // So we check the header and check authentication in this function
 
       // utils.log.info('received soap header');
-      if (methodName === "GetSystemDateAndTime") return;
-
       const authDebug = !!this.config.authDebug;
       const authDisabled = !!this.config.authDisable;
+
+      const unauthenticatedMethods = new Set([
+        'GetServices',
+        'GetCapabilities',
+        'GetServiceCapabilities',
+        'GetSystemDateAndTime',
+        'GetDeviceInformation'
+      ]);
+
+      const optionalInventoryMethods = new Set([
+        'GetScopes',
+        'GetHostname'
+      ]);
 
       if (authDisabled) {
         if (authDebug) {
           utils.log.info(
             'Auth debug (%s): authentication disabled; skipping checks',
+            methodName
+          );
+        }
+        return;
+      }
+
+      if (unauthenticatedMethods.has(methodName)) {
+        if (authDebug) {
+          utils.log.info(
+            'Auth debug (%s): unauthenticated method; skipping checks',
+            methodName
+          );
+        }
+        return;
+      }
+
+      if (optionalInventoryMethods.has(methodName) && !this.config.Username) {
+        if (authDebug) {
+          utils.log.info(
+            'Auth debug (%s): optional inventory method without credentials; skipping checks',
             methodName
           );
         }
