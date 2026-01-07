@@ -356,6 +356,21 @@ class DeviceService extends SoapService {
                 },
               }
             }
+          },
+          {
+            Namespace: "http://www.onvif.org/ver10/events/wsdl",
+            XAddr: `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/event_service`,
+            Version: {
+              Major: 2,
+              Minor: 5,
+            },
+            Capabilities: {
+              "tev:Capabilities": {
+                attributes: {
+                  'xmlns:tev': 'http://www.onvif.org/ver10/events/wsdl',
+                },
+              }
+            }
           }]
       };
 
