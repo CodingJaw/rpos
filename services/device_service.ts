@@ -368,6 +368,11 @@ class DeviceService extends SoapService {
               "tev:Capabilities": {
                 attributes: {
                   'xmlns:tev': 'http://www.onvif.org/ver10/events/wsdl',
+                  WSSubscriptionPolicySupport: true,
+                  WSPullPointSupport: true,
+                  WSPausableSubscriptionManagerInterfaceSupport: false,
+                  MaxNotificationProducers: 1,
+                  MaxPullPoints: 32
                 },
               }
             }
@@ -449,9 +454,11 @@ class DeviceService extends SoapService {
       if (category == undefined || category == "All" || category == "Events") {
         GetCapabilitiesResponse.Capabilities["Events"] = {
           XAddr: `http://${utils.getIpAddress()}:${this.config.ServicePort}/onvif/event_service`,
-          WSSubscriptionPolicySupport: false,
-          WSPullPointSupport: false,
-          WSPausableSubscriptionManagerInterfaceSupport: false
+          WSSubscriptionPolicySupport: true,
+          WSPullPointSupport: true,
+          WSPausableSubscriptionManagerInterfaceSupport: false,
+          MaxNotificationProducers: 1,
+          MaxPullPoints: 32
         }
       }
       if (category === undefined || category == "All" || category == "Imaging") {
