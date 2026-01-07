@@ -71,9 +71,29 @@ class EventService extends SoapService {
       return this.buildSubscriptionResponse(subscription);
     };
 
+    eventPort.GetEventProperties = (args /*, cb, headers, req*/) => {
+      return this.buildEventPropertiesResponse();
+    };
+
+    eventPort.AddEventBroker = (args /*, cb, headers, req*/) => {
+      return {};
+    };
+
+    eventPort.DeleteEventBroker = (args /*, cb, headers, req*/) => {
+      return {};
+    };
+
+    eventPort.GetEventBrokers = (args /*, cb, headers, req*/) => {
+      return { EventBroker: [] };
+    };
+
     pullPoint.PullMessages = (args, cb, headers, req) => {
       var subscription = this.resolveSubscription(headers, req);
       return this.buildPullMessagesResponse(subscription, args);
+    };
+
+    pullPoint.Seek = (args, cb, headers, req) => {
+      return {};
     };
 
     pullPoint.SetSynchronizationPoint = (args, cb, headers, req) => {
@@ -91,6 +111,10 @@ class EventService extends SoapService {
     notificationProducer.Subscribe = (args /*, cb, headers, req*/) => {
       var subscription = this.createSubscription(args);
       return this.buildSubscriptionResponse(subscription);
+    };
+
+    notificationProducer.GetCurrentMessage = (args /*, cb, headers, req*/) => {
+      return {};
     };
 
     subscriptionManager.Renew = (args, cb, headers, req) => {
@@ -248,6 +272,40 @@ class EventService extends SoapService {
           ]
         }
       }
+    };
+  }
+
+  buildEventPropertiesResponse() {
+    return {
+      TopicNamespaceLocation: [
+        'http://www.onvif.org/ver10/topics'
+      ],
+      FixedTopicSet: true,
+      TopicSet: this.buildTopicSet(),
+      TopicExpressionDialect: [
+        'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete',
+        'http://www.onvif.org/ver10/tev/topicExpression/ConcreteSet'
+      ],
+      MessageContentFilterDialect: [''],
+      MessageContentSchemaLocation: [
+        'http://www.onvif.org/ver10/schema/onvif.xsd'
+      ]
+    };
+  }
+
+  buildTopicSet() {
+    return {
+      'tns1:Device': {
+        'tns1:Trigger': {},
+        'tns1:Output': {}
+      },
+      'tns1:RuleEngine': {
+        'tns1:Motion': {},
+        'tns1:CellMotionDetector': {
+          'tns1:Motion': {}
+        }
+      },
+      'tns1:SynchronizationPoint': {}
     };
   }
 

@@ -23,11 +23,31 @@ exports.EventService = {
       //var CreatePullPointSubscription = { };
       CreatePullPointSubscription: function (args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
+      },
+      //var GetEventProperties = { };
+      GetEventProperties: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+      },
+      //var AddEventBroker = { };
+      AddEventBroker: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+      },
+      //var DeleteEventBroker = { };
+      DeleteEventBroker: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+      },
+      //var GetEventBrokers = { };
+      GetEventBrokers: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
       }
     },
     PullPointSubscription: {
       //var PullMessages = { };
       PullMessages: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+      },
+      //var Seek = { };
+      Seek: function (args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
       },
       //var SetSynchronizationPoint = { };
@@ -52,6 +72,10 @@ exports.EventService = {
     NotificationProducer: {
       //var Subscribe = { };
       Subscribe: function (args /*, cb, headers*/) {
+        throw NOT_IMPLEMENTED;
+      },
+      //var GetCurrentMessage = { };
+      GetCurrentMessage: function (args /*, cb, headers*/) {
         throw NOT_IMPLEMENTED;
       }
     }
