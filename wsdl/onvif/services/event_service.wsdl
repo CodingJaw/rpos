@@ -4,6 +4,8 @@
   xmlns:tev="http://www.onvif.org/ver10/events/wsdl"
   xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
   <wsdl:import namespace="http://www.onvif.org/ver10/events/wsdl" location="../wsdl/event.wsdl"/>
+  <wsdl:import namespace="http://docs.oasis-open.org/wsn/bw-2" location="../../oasis-open/bw-2.wsdl"/>
+  <wsdl:import namespace="http://docs.oasis-open.org/wsrf/rw-2" location="../../oasis-open/rw-2.wsdl"/>
   <wsdl:service name="EventService">
     <wsdl:port name="EventPort" binding="tev:EventBinding">
       <soap:address location="http://localhost/onvif/event_service" />
