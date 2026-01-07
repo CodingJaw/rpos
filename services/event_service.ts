@@ -17,6 +17,11 @@ interface SubscriptionState {
   syncPointPending?: boolean;
 }
 
+interface SimpleItemEntry {
+  Name: string;
+  Value: string | number | boolean;
+}
+
 class EventService extends SoapService {
   event_service: any;
   subscriptions: Map<string, SubscriptionState>;
@@ -244,6 +249,57 @@ class EventService extends SoapService {
         }
       }
     };
+  }
+
+  publishSimpleEvent(topic: string, dataItems: SimpleItemEntry[], sourceItems?: SimpleItemEntry[]) {
+    for (var subscription of this.subscriptions.values()) {
+      subscription.messageQueue.push(
+        this.buildNotificationMessage(subscription, topic, dataItems, sourceItems)
+      );
+    }
+  }
+
+  buildNotificationMessage(subscription: SubscriptionState, topic: string, dataItems: SimpleItemEntry[], sourceItems?: SimpleItemEntry[]) {
+    var now = new Date();
+    var message: any = {
+      SubscriptionReference: this.buildSubscriptionReference(subscription.id),
+      Topic: {
+        attributes: {
+          Dialect: 'http://www.onvif.org/ver10/tev/topicExpression/ConcreteSet'
+        },
+        $value: topic
+      },
+      Message: {
+        attributes: {
+          UtcTime: now.toISOString()
+        },
+        Data: {
+          SimpleItem: dataItems.map(item => {
+            return {
+              attributes: {
+                Name: item.Name,
+                Value: String(item.Value)
+              }
+            };
+          })
+        }
+      }
+    };
+
+    if (sourceItems && sourceItems.length > 0) {
+      message.Message.Source = {
+        SimpleItem: sourceItems.map(item => {
+          return {
+            attributes: {
+              Name: item.Name,
+              Value: String(item.Value)
+            }
+          };
+        })
+      };
+    }
+
+    return message;
   }
 
   resolveTerminationTime(args: any, fallbackBase: Date): Date {
