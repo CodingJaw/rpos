@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions
+  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+  xmlns:tev="http://www.onvif.org/ver10/events/wsdl"
+  xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:import namespace="http://www.onvif.org/ver10/events/wsdl" location="../wsdl/event.wsdl"/>
+  <wsdl:service name="EventService">
+    <wsdl:port name="EventPort" binding="tev:EventBinding">
+      <soap:address location="http://localhost/onvif/event_service" />
+    </wsdl:port>
+    <wsdl:port name="PullPointSubscription" binding="tev:PullPointSubscriptionBinding">
+      <soap:address location="http://localhost/onvif/event_service" />
+    </wsdl:port>
+    <wsdl:port name="SubscriptionManager" binding="tev:SubscriptionManagerBinding">
+      <soap:address location="http://localhost/onvif/event_service" />
+    </wsdl:port>
+    <wsdl:port name="NotificationProducer" binding="tev:NotificationProducerBinding">
+      <soap:address location="http://localhost/onvif/event_service" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

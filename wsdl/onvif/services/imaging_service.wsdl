@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<wsdl:definitions xmlns:i0="http://www.onvif.org/ver20/imaging/wsdl" 
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" 
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:import namespace="http://www.onvif.org/ver20/imaging/wsdl" location="../wsdl/imaging.wsdl"/>
+  <wsdl:service name="ImagingService">
+    <wsdl:port name="Imaging" binding="i0:ImagingBinding">
+      <soap:address location="http://localhost/onvif/imaging_service"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<wsdl:definitions xmlns:i0="http://www.onvif.org/ver10/device/wsdl" 
+   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" 
+   xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+
+   <!-- 
+        Here you can see I tried a few things to troubleshoot the invalid nsPrefix mapping
+    -->
+    
+   <!-- xmlns:s="http://www.w3.org/2001/XMLSchema" -->
+  <!-- <wsdl:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="../schemas/onvif.xsd"/> -->
+  <wsdl:import namespace="http://www.onvif.org/ver10/media/wsdl" location="../wsdl/media.wsdl"/>
+<!-- 
+  <wsdl:types>
+    <s:schema targetNamespace="http://www.onvif.org/ver10/schema">
+      <s:import namespace="http://www.onvif.org/ver10/schema" location="../schemas/onvif.xsd"/>
+    </s:schema>
+      <s:schema targetNamespace="http://versteege.com/rpos">
+      <s:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="../schemas/onvif.xsd"/>
+      <s:import schemaLocation="../wsdl/media.wsdl" namespace="http://www.onvif.org/ver10/media/wsdl"/>
+    </s:schema>
+    <s:schema targetNamespace="http://www.onvif.org/ver10/media/wsdl">
+      <s:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="../schemas/onvif.xsd"/>
+      <s:import schemaLocation="../wsdl/media.wsdl" namespace="http://www.onvif.org/ver10/media/wsdl"/>
+    </s:schema>
+  </wsdl:types> -->
+
+  <wsdl:service name="MediaService">
+    <wsdl:port name="Media" binding="i0:MediaBinding">
+      <soap:address location="http://localhost/onvif/media_service" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
