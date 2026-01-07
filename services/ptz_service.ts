@@ -34,8 +34,8 @@ class PTZService extends SoapService {
     this.serviceOptions = {
       path: '/onvif/ptz_service',
       services: this.ptz_service,
-      xml: fs.readFileSync('./wsdl/ptz_service.wsdl', 'utf8'),
-      wsdlPath: 'wsdl/ptz_service.wsdl',
+      xml: fs.readFileSync('./wsdl/onvif/services/ptz_service.wsdl', 'utf8'),
+      wsdlPath: 'wsdl/onvif/services/ptz_service.wsdl',
       onReady: () => console.log('ptz_service started')
     };
 

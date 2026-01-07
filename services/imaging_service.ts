@@ -24,8 +24,8 @@ class ImagingService extends SoapService {
     this.serviceOptions = {
       path: '/onvif/imaging_service',
       services: this.imaging_service,
-      xml: fs.readFileSync('./wsdl/imaging_service.wsdl', 'utf8'),
-      wsdlPath: 'wsdl/imaging_service.wsdl',
+      xml: fs.readFileSync('./wsdl/onvif/services/imaging_service.wsdl', 'utf8'),
+      wsdlPath: 'wsdl/onvif/services/imaging_service.wsdl',
       onReady: () => console.log('imaging_service started')
     };
 
