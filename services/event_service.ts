@@ -252,9 +252,10 @@ class EventService extends SoapService {
   }
 
   publishSimpleEvent(topic: string, dataItems: SimpleItemEntry[], sourceItems?: SimpleItemEntry[]) {
-    for (var subscription of this.subscriptions.values()) {
-      subscription.messageQueue.push(
-        this.buildNotificationMessage(subscription, topic, dataItems, sourceItems)
+    var subscriptions = Array.from(this.subscriptions.values());
+    for (var i = 0; i < subscriptions.length; i++) {
+      subscriptions[i].messageQueue.push(
+        this.buildNotificationMessage(subscriptions[i], topic, dataItems, sourceItems)
       );
     }
   }
