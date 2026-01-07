@@ -22,8 +22,8 @@ class DeviceService extends SoapService {
     this.serviceOptions = {
       path: '/onvif/device_service',
       services: this.device_service,
-      xml: fs.readFileSync('./wsdl/device_service.wsdl', 'utf8'),
-      wsdlPath: 'wsdl/device_service.wsdl',
+      xml: fs.readFileSync('./wsdl/onvif/services/device_service.wsdl', 'utf8'),
+      wsdlPath: 'wsdl/onvif/services/device_service.wsdl',
       onReady: () => console.log('device_service started')
     };
 

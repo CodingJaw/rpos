@@ -4,6 +4,8 @@
   "ServicePort" : 8081,
   "Username" : "proxyuser",
   "Password" : "proxypassword",
+  "authDebug": false,
+  "authDisable": false,
   "CameraType" : "picam",
   "RTSPAddress" : "hostname_of_remote_rtsp_server", "//":"Normally left blank. Used to set RTSP Server Address",
   "RTSPPort" : 8554,
