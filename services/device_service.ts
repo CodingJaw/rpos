@@ -112,6 +112,20 @@ function toLocalDateTimeValue(date: Date) {
   };
 }
 
+function formatTwoDigits(value: number): string {
+  return value < 10 ? "0" + value : String(value);
+}
+
+function formatUtcDateForSystem(date: Date): string {
+  var year = date.getUTCFullYear();
+  var month = formatTwoDigits(date.getUTCMonth() + 1);
+  var day = formatTwoDigits(date.getUTCDate());
+  var hours = formatTwoDigits(date.getUTCHours());
+  var minutes = formatTwoDigits(date.getUTCMinutes());
+  var seconds = formatTwoDigits(date.getUTCSeconds());
+  return year + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds;
+}
+
 class DeviceService extends SoapService {
   device_service: any;
   callback: any;
@@ -250,6 +264,15 @@ class DeviceService extends SoapService {
         if (!utcDate && !localDate) {
           utcDate = new Date(now.getTime());
           localDate = new Date(now.getTime());
+        }
+        if (utils.isLinux && utcDate) {
+          var formattedUtcDate = formatUtcDateForSystem(utcDate);
+          try {
+            utils.execSync("sudo date -u -s \"" + formattedUtcDate + "\"");
+            utils.execSync("sudo hwclock -w");
+          } catch (err) {
+            console.warn("Failed to set system time:", err);
+          }
         }
       } else {
         utcDate = undefined;
