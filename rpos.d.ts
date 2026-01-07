@@ -27,6 +27,8 @@ interface rposConfig {
   DeviceInformation: DeviceInformation;
   logLevel: number;
   logSoapCalls: Boolean;
+  authDebug?: boolean;
+  authDisable?: boolean;
 }
 
 interface CameraSettings {
