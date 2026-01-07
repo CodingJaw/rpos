@@ -9,15 +9,134 @@ import { Server } from 'http';
 import ip = require('ip');
 var utils = Utils.utils;
 
+type DateTimeMode = "NTP" | "Manual";
+
+interface DeviceDateTimeState {
+  dateTimeType: DateTimeMode;
+  daylightSavings: boolean;
+  timeZone: string;
+  manualUtc?: Date;
+  manualLocal?: Date;
+  lastSetAt?: number;
+}
+
+interface NtpState {
+  fromDhcp: boolean;
+  ntpManual: Array<{
+    Type: string;
+    IPv4Address?: string;
+    IPv6Address?: string;
+    DNSname?: string;
+    Extension?: {};
+  }>;
+}
+
+function getDaylightSavings(date: Date): boolean {
+  return typeof (date as any).dst === "function" ? (date as any).dst() : false;
+}
+
+function buildUtcOffsetTimeZone(date: Date): string {
+  var offset = date.getTimezoneOffset();
+  var abs_offset = Math.abs(offset);
+  var hrs_offset = Math.floor(abs_offset / 60);
+  var mins_offset = (abs_offset % 60);
+  return "UTC" + (offset < 0 ? '-' : '+') + hrs_offset + (mins_offset === 0 ? '' : ':' + mins_offset);
+}
+
+function normalizeDateTimeType(value: any): DateTimeMode {
+  return String(value).toLowerCase() === "manual" ? "Manual" : "NTP";
+}
+
+function normalizeTimeZone(value: any, fallback: string): string {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+  if (value && typeof value.TZ === "string" && value.TZ.trim().length > 0) {
+    return value.TZ.trim();
+  }
+  return fallback;
+}
+
+function parseUtcOffsetMinutes(tz: string): number | null {
+  var match = /^UTC([+-])(\d{1,2})(?::?(\d{2}))?$/i.exec(tz);
+  if (!match) {
+    return null;
+  }
+  var sign = match[1] === "-" ? -1 : 1;
+  var hours = parseInt(match[2], 10);
+  var minutes = match[3] ? parseInt(match[3], 10) : 0;
+  return sign * (hours * 60 + minutes);
+}
+
+function parseDateTimeParts(value: any): { year: number; month: number; day: number; hour: number; minute: number; second: number } | null {
+  if (!value || !value.Date || !value.Time) {
+    return null;
+  }
+  return {
+    year: Number(value.Date.Year),
+    month: Number(value.Date.Month),
+    day: Number(value.Date.Day),
+    hour: Number(value.Time.Hour),
+    minute: Number(value.Time.Minute),
+    second: Number(value.Time.Second)
+  };
+}
+
+function parseUtcDateTime(value: any): Date | null {
+  var parts = parseDateTimeParts(value);
+  if (!parts) {
+    return null;
+  }
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second));
+}
+
+function parseLocalDateTime(value: any): Date | null {
+  var parts = parseDateTimeParts(value);
+  if (!parts) {
+    return null;
+  }
+  return new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+}
+
+function toUtcDateTimeValue(date: Date) {
+  return {
+    Time: { Hour: date.getUTCHours(), Minute: date.getUTCMinutes(), Second: date.getUTCSeconds() },
+    Date: { Year: date.getUTCFullYear(), Month: date.getUTCMonth() + 1, Day: date.getUTCDate() }
+  };
+}
+
+function toLocalDateTimeValue(date: Date) {
+  return {
+    Time: { Hour: date.getHours(), Minute: date.getMinutes(), Second: date.getSeconds() },
+    Date: { Year: date.getFullYear(), Month: date.getMonth() + 1, Day: date.getDate() }
+  };
+}
+
 class DeviceService extends SoapService {
   device_service: any;
   callback: any;
+  deviceDateTimeState: DeviceDateTimeState;
+  ntpState: NtpState;
 
   constructor(config: rposConfig, server: Server, callback) {
     super(config, server);
 
     this.device_service = require('./stubs/device_service.js').DeviceService;
     this.callback = callback;
+    var now = new Date();
+    this.deviceDateTimeState = {
+      dateTimeType: "NTP",
+      daylightSavings: getDaylightSavings(now),
+      timeZone: buildUtcOffsetTimeZone(now)
+    };
+    this.ntpState = {
+      fromDhcp: false,
+      ntpManual: [{
+        Type: "DNS",
+        DNSname: "pool.ntp.org",
+        Extension: {}
+      }]
+    };
 
     this.serviceOptions = {
       path: '/onvif/device_service',
@@ -46,31 +165,57 @@ class DeviceService extends SoapService {
 
     port.GetSystemDateAndTime = (args /*, cb, headers*/) => {
       var now = new Date();
-
-      // Ideally this code would compute a full POSIX TZ string with daylight saving
-      // For now we will compute the current time zone as a UTC offset
-      // Note that what we call UTC+ 1 in called UTC-1 in Posix TZ format
-      var offset = now.getTimezoneOffset();
-      var abs_offset = Math.abs(offset);
-      var hrs_offset = Math.floor(abs_offset / 60);
-      var mins_offset = (abs_offset % 60);
-      var tz = "UTC" + (offset < 0 ? '-' : '+') + hrs_offset + (mins_offset === 0 ? '' : ':' + mins_offset);
+      var timeZone = this.deviceDateTimeState.timeZone || buildUtcOffsetTimeZone(now);
+      var daylightSavings = this.deviceDateTimeState.daylightSavings;
+      var utcDate: Date;
+      var localDate: Date;
+      if (this.deviceDateTimeState.dateTimeType === "Manual") {
+        var elapsed = this.deviceDateTimeState.lastSetAt ? Date.now() - this.deviceDateTimeState.lastSetAt : 0;
+        if (this.deviceDateTimeState.manualUtc) {
+          utcDate = new Date(this.deviceDateTimeState.manualUtc.getTime() + elapsed);
+        }
+        if (this.deviceDateTimeState.manualLocal) {
+          localDate = new Date(this.deviceDateTimeState.manualLocal.getTime() + elapsed);
+        }
+        var offsetMinutes = parseUtcOffsetMinutes(timeZone);
+        if (!utcDate && localDate && offsetMinutes !== null) {
+          utcDate = new Date(localDate.getTime() - offsetMinutes * 60000);
+        }
+        if (!utcDate && localDate && offsetMinutes === null) {
+          utcDate = new Date(localDate.getTime());
+        }
+        if (!localDate && utcDate && offsetMinutes !== null) {
+          localDate = new Date(utcDate.getTime() + offsetMinutes * 60000);
+        }
+        if (!localDate && utcDate && offsetMinutes === null) {
+          localDate = new Date(utcDate.getTime());
+        }
+        if (!utcDate) {
+          utcDate = new Date(now.getTime());
+        }
+        if (!localDate) {
+          localDate = new Date(now.getTime());
+        }
+      } else {
+        utcDate = new Date(now.getTime());
+        localDate = new Date(now.getTime());
+        if (typeof daylightSavings !== "boolean") {
+          daylightSavings = getDaylightSavings(now);
+        }
+      }
+      if (typeof daylightSavings !== "boolean") {
+        daylightSavings = getDaylightSavings(now);
+      }
 
       var GetSystemDateAndTimeResponse = {
         SystemDateAndTime: {
-          DateTimeType: "NTP",
-          DaylightSavings: now.dst(),
+          DateTimeType: this.deviceDateTimeState.dateTimeType,
+          DaylightSavings: daylightSavings,
           TimeZone: {
-            TZ: tz
+            TZ: timeZone
           },
-          UTCDateTime: {
-            Time: { Hour: now.getUTCHours(), Minute: now.getUTCMinutes(), Second: now.getUTCSeconds() },
-            Date: { Year: now.getUTCFullYear(), Month: now.getUTCMonth() + 1, Day: now.getUTCDate() }
-          },
-          LocalDateTime: {
-            Time: { Hour: now.getHours(), Minute: now.getMinutes(), Second: now.getSeconds() },
-            Date: { Year: now.getFullYear(), Month: now.getMonth() + 1, Day: now.getDate() }
-          },
+          UTCDateTime: toUtcDateTimeValue(utcDate),
+          LocalDateTime: toLocalDateTimeValue(localDate),
           Extension: {}
         }
       };
@@ -78,6 +223,46 @@ class DeviceService extends SoapService {
     };
 
     port.SetSystemDateAndTime = (args /*, cb, headers*/) => {
+      var now = new Date();
+      var dateTimeType = normalizeDateTimeType(args && args.DateTimeType);
+      var daylightSavings = typeof (args && args.DaylightSavings) === "boolean"
+        ? args.DaylightSavings
+        : (typeof this.deviceDateTimeState.daylightSavings === "boolean"
+          ? this.deviceDateTimeState.daylightSavings
+          : getDaylightSavings(now));
+      var timeZone = normalizeTimeZone(args && args.TimeZone, this.deviceDateTimeState.timeZone || buildUtcOffsetTimeZone(now));
+      var utcDate = parseUtcDateTime(args && args.UTCDateTime);
+      var localDate = parseLocalDateTime(args && args.LocalDateTime);
+      if (dateTimeType === "Manual") {
+        var offsetMinutes = parseUtcOffsetMinutes(timeZone);
+        if (!utcDate && localDate && offsetMinutes !== null) {
+          utcDate = new Date(localDate.getTime() - offsetMinutes * 60000);
+        }
+        if (!utcDate && localDate && offsetMinutes === null) {
+          utcDate = new Date(localDate.getTime());
+        }
+        if (!localDate && utcDate && offsetMinutes !== null) {
+          localDate = new Date(utcDate.getTime() + offsetMinutes * 60000);
+        }
+        if (!localDate && utcDate && offsetMinutes === null) {
+          localDate = new Date(utcDate.getTime());
+        }
+        if (!utcDate && !localDate) {
+          utcDate = new Date(now.getTime());
+          localDate = new Date(now.getTime());
+        }
+      } else {
+        utcDate = undefined;
+        localDate = undefined;
+      }
+      this.deviceDateTimeState = {
+        dateTimeType: dateTimeType,
+        daylightSavings: daylightSavings,
+        timeZone: timeZone,
+        manualUtc: utcDate,
+        manualLocal: localDate,
+        lastSetAt: dateTimeType === "Manual" ? Date.now() : undefined
+      };
       var SetSystemDateAndTimeResponse = {};
       return SetSystemDateAndTimeResponse;
     };
@@ -388,7 +573,7 @@ class DeviceService extends SoapService {
     port.GetNTP = (args /*, cb, headers*/) => {
        var GetNTPResponse = { 
           NTPInformation : { 
-            FromDHCP : false,
+            FromDHCP : this.ntpState.fromDhcp,
             //NTPFromDHCP : [{ 
             //  Type : { xs:string},
             //  IPv4Address : { xs:token},
@@ -396,13 +581,7 @@ class DeviceService extends SoapService {
             //  DNSname : { xs:token},
             //  Extension : { }
             //}],
-            NTPManual : [{ 
-              Type : "DNS",
-              //IPv4Address : { xs:token},
-              //IPv6Address : { xs:token},
-              DNSname : "pool.ntp.org",
-              Extension : { }
-            }],
+            NTPManual : this.ntpState.ntpManual,
             Extension : { }
            } 
         };
@@ -410,6 +589,18 @@ class DeviceService extends SoapService {
       };
 
     port.SetNTP = (args /*, cb, headers*/) => {
+      var fromDhcp = typeof (args && args.FromDHCP) === "boolean" ? args.FromDHCP : this.ntpState.fromDhcp;
+      var manual = Array.isArray(args && args.NTPManual) ? args.NTPManual : this.ntpState.ntpManual;
+      this.ntpState = {
+        fromDhcp: fromDhcp,
+        ntpManual: manual.map((entry) => ({
+          Type: entry.Type,
+          IPv4Address: entry.IPv4Address,
+          IPv6Address: entry.IPv6Address,
+          DNSname: entry.DNSname,
+          Extension: entry.Extension || {}
+        }))
+      };
       var SetNTPResponse = {};
       return SetNTPResponse;
     };
