@@ -233,16 +233,17 @@ class SoapService {
 
     const originalProcess = this.serviceInstance._process.bind(this.serviceInstance);
     this.serviceInstance._process = (input: any, url: any, callback?: (result: string) => void) => {
-      let processUrl: string = typeof url === 'string' ? url : '';
-      let processCallback: ((result: string) => void) | undefined =
-        typeof callback === 'function' ? callback : undefined;
+      let processUrl = '';
+      let processCallback: ((result: string) => void) | undefined;
 
-      if (typeof url === 'function') {
-        if (!processCallback) {
-          processCallback = url;
-        } else {
-          processUrl = '';
-        }
+      if (typeof url === 'string') {
+        processUrl = url;
+      } else if (typeof url === 'function') {
+        processCallback = url;
+      }
+
+      if (typeof callback === 'function') {
+        processCallback = callback;
       }
 
       if (!processCallback) {
