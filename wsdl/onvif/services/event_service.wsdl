@@ -11,13 +11,13 @@
       <soap:address location="http://localhost/onvif/event_service" />
     </wsdl:port>
     <wsdl:port name="PullPointSubscription" binding="tev:PullPointSubscriptionBinding">
-      <soap:address location="http://localhost/onvif/event_service" />
+      <soap:address location="http://localhost/onvif/event_service_pullpoint" />
     </wsdl:port>
     <wsdl:port name="SubscriptionManager" binding="tev:SubscriptionManagerBinding">
-      <soap:address location="http://localhost/onvif/event_service" />
+      <soap:address location="http://localhost/onvif/event_service_subscription" />
     </wsdl:port>
     <wsdl:port name="NotificationProducer" binding="tev:NotificationProducerBinding">
-      <soap:address location="http://localhost/onvif/event_service" />
+      <soap:address location="http://localhost/onvif/event_service_notify" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

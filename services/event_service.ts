@@ -26,6 +26,7 @@ class EventService extends SoapService {
   event_service: any;
   subscriptions: Map<string, SubscriptionState>;
   nextSubscriptionId: number;
+  additionalServices: SoapService[];
 
   constructor(config: rposConfig, server: Server) {
     super(config, server);
@@ -33,16 +34,63 @@ class EventService extends SoapService {
     this.event_service = require('./stubs/event_service.js').EventService;
     this.subscriptions = new Map<string, SubscriptionState>();
     this.nextSubscriptionId = 1;
+    this.additionalServices = [];
+
+    this.extendService();
 
     this.serviceOptions = {
       path: '/onvif/event_service',
-      services: this.event_service,
+      services: this.buildPortService('EventPort'),
       xml: fs.readFileSync('./wsdl/onvif/services/event_service.wsdl', 'utf8'),
       wsdlPath: 'wsdl/onvif/services/event_service.wsdl',
       onReady: () => utils.log.info('event_service started')
     };
 
-    this.extendService();
+    this.additionalServices.push(
+      this.buildAdditionalService(
+        server,
+        '/onvif/event_service_pullpoint',
+        'PullPointSubscription',
+        'event_service_pullpoint started'
+      ),
+      this.buildAdditionalService(
+        server,
+        '/onvif/event_service_subscription',
+        'SubscriptionManager',
+        'event_service_subscription started'
+      ),
+      this.buildAdditionalService(
+        server,
+        '/onvif/event_service_notify',
+        'NotificationProducer',
+        'event_service_notify started'
+      )
+    );
+  }
+
+  buildPortService(portName: string) {
+    return {
+      EventService: {
+        [portName]: this.event_service.EventService[portName]
+      }
+    };
+  }
+
+  buildAdditionalService(server: Server, path: string, portName: string, logLabel: string) {
+    var service = new SoapService(this.config, server);
+    service.serviceOptions = {
+      path: path,
+      services: this.buildPortService(portName),
+      xml: fs.readFileSync('./wsdl/onvif/services/event_service.wsdl', 'utf8'),
+      wsdlPath: 'wsdl/onvif/services/event_service.wsdl',
+      onReady: () => utils.log.info(logLabel)
+    };
+    return service;
+  }
+
+  start() {
+    super.start();
+    this.additionalServices.forEach(service => service.start());
   }
 
   extendService() {
@@ -217,7 +265,7 @@ class EventService extends SoapService {
   }
 
   buildSubscriptionAddress(subscriptionId: string): string {
-    return 'http://' + utils.getIpAddress() + ':' + this.config.ServicePort + '/onvif/event_service?subscription=' + subscriptionId;
+    return 'http://' + utils.getIpAddress() + ':' + this.config.ServicePort + '/onvif/event_service_subscription?subscription=' + subscriptionId;
   }
 
   buildPullMessagesResponse(subscription: SubscriptionState, args: any) {
