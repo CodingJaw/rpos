@@ -27,6 +27,10 @@ class EventService extends SoapService {
   subscriptions: Map<string, SubscriptionState>;
   nextSubscriptionId: number;
   additionalServices: SoapService[];
+  eventServicePath: string;
+  pullPointPath: string;
+  subscriptionPath: string;
+  notificationPath: string;
 
   constructor(config: rposConfig, server: Server) {
     super(config, server);
@@ -35,11 +39,15 @@ class EventService extends SoapService {
     this.subscriptions = new Map<string, SubscriptionState>();
     this.nextSubscriptionId = 1;
     this.additionalServices = [];
+    this.eventServicePath = '/onvif/event_service';
+    this.pullPointPath = '/onvif/event_service_pullpoint';
+    this.subscriptionPath = '/onvif/event_service_subscription';
+    this.notificationPath = '/onvif/event_service_notify';
 
     this.extendService();
 
     this.serviceOptions = {
-      path: '/onvif/event_service',
+      path: this.eventServicePath,
       services: this.buildPortService('EventPort'),
       xml: fs.readFileSync('./wsdl/onvif/services/event_service.wsdl', 'utf8'),
       wsdlPath: 'wsdl/onvif/services/event_service.wsdl',
@@ -49,19 +57,19 @@ class EventService extends SoapService {
     this.additionalServices.push(
       this.buildAdditionalService(
         server,
-        '/onvif/event_service_pullpoint',
+        this.pullPointPath,
         'PullPointSubscription',
         'event_service_pullpoint started'
       ),
       this.buildAdditionalService(
         server,
-        '/onvif/event_service_subscription',
+        this.subscriptionPath,
         'SubscriptionManager',
         'event_service_subscription started'
       ),
       this.buildAdditionalService(
         server,
-        '/onvif/event_service_notify',
+        this.notificationPath,
         'NotificationProducer',
         'event_service_notify started'
       )
@@ -265,7 +273,7 @@ class EventService extends SoapService {
   }
 
   buildSubscriptionAddress(subscriptionId: string): string {
-    return 'http://' + utils.getIpAddress() + ':' + this.config.ServicePort + '/onvif/event_service_subscription?subscription=' + subscriptionId;
+    return 'http://' + utils.getIpAddress() + ':' + this.config.ServicePort + this.subscriptionPath + '?subscription=' + subscriptionId;
   }
 
   buildPullMessagesResponse(subscription: SubscriptionState, args: any) {
