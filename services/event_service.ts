@@ -67,7 +67,8 @@ class EventService extends SoapService {
     };
 
     eventPort.CreatePullPointSubscription = (args /*, cb, headers, req*/) => {
-      var subscription = this.createSubscription(args);
+      var terminationTime = this.validatePullPointSubscriptionRequest(args);
+      var subscription = this.createSubscription(args, terminationTime);
       return this.buildSubscriptionResponse(subscription);
     };
 
@@ -134,10 +135,10 @@ class EventService extends SoapService {
     };
   }
 
-  createSubscription(args: any): SubscriptionState {
+  createSubscription(args: any, terminationTimeOverride?: Date): SubscriptionState {
     var id = 'sub-' + this.nextSubscriptionId++;
     var now = new Date();
-    var terminationTime = this.resolveTerminationTime(args, now);
+    var terminationTime = terminationTimeOverride || this.resolveTerminationTime(args, now);
     var subscription: SubscriptionState = {
       id: id,
       createdAt: now,
@@ -282,10 +283,7 @@ class EventService extends SoapService {
       ],
       FixedTopicSet: true,
       TopicSet: this.buildTopicSet(),
-      TopicExpressionDialect: [
-        'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete',
-        'http://www.onvif.org/ver10/tev/topicExpression/ConcreteSet'
-      ],
+      TopicExpressionDialect: this.getSupportedTopicExpressionDialects(),
       MessageContentSchemaLocation: [
         'http://www.onvif.org/ver10/schema/onvif.xsd'
       ]
@@ -418,6 +416,187 @@ class EventService extends SoapService {
     var minutes = match[3] ? parseInt(match[3], 10) : 0;
     var seconds = match[4] ? parseInt(match[4], 10) : 0;
     return ((days * 24 + hours) * 60 + minutes) * 60 * 1000 + seconds * 1000;
+  }
+
+  validatePullPointSubscriptionRequest(args: any): Date {
+    this.validateFilter(args && args.Filter);
+    this.validateTopicExpressionDialects(args);
+
+    var now = new Date();
+    if (args && Object.prototype.hasOwnProperty.call(args, 'InitialTerminationTime')) {
+      var requested = args.InitialTerminationTime;
+      if (requested && typeof requested === 'object') {
+        if (requested.$value === null || requested.$value === undefined) {
+          return this.defaultTerminationTime(now);
+        }
+        if (requested.attributes && requested.attributes['xsi:nil'] === 'true') {
+          return this.defaultTerminationTime(now);
+        }
+      }
+
+      if (requested !== null && requested !== undefined) {
+        var resolved = this.parseAbsoluteOrRelativeTime(requested, now);
+        if (!resolved) {
+          throw this.buildWsntFault('UnacceptableInitialTerminationTimeFault');
+        }
+        return resolved;
+      }
+    }
+
+    return this.defaultTerminationTime(now);
+  }
+
+  validateFilter(filter: any) {
+    if (filter === null || filter === undefined) {
+      return;
+    }
+
+    if (typeof filter !== 'object') {
+      throw this.buildWsntFault('InvalidFilterFault', {
+        'wsnt:InvalidFilterFault': {
+          UnknownFilter: ['Filter']
+        }
+      });
+    }
+
+    var topicExpressions = this.extractTopicExpressions(filter);
+    var unknownFilters = this.extractUnknownFilterKeys(filter);
+    if (unknownFilters.length > 0) {
+      throw this.buildWsntFault('InvalidFilterFault', {
+        'wsnt:InvalidFilterFault': {
+          UnknownFilter: unknownFilters
+        }
+      });
+    }
+
+    for (var i = 0; i < topicExpressions.length; i++) {
+      this.validateTopicExpression(topicExpressions[i]);
+    }
+  }
+
+  extractTopicExpressions(filter: any): any[] {
+    var expressions: any[] = [];
+    var topicExpression = filter.TopicExpression || filter['wsnt:TopicExpression'];
+    if (topicExpression !== undefined) {
+      if (Array.isArray(topicExpression)) {
+        expressions = expressions.concat(topicExpression);
+      } else {
+        expressions.push(topicExpression);
+      }
+    }
+    return expressions;
+  }
+
+  extractUnknownFilterKeys(filter: any): string[] {
+    var unknown: string[] = [];
+    var keys = Object.keys(filter);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      if (key === 'TopicExpression' || key === 'wsnt:TopicExpression' || key === 'attributes' || key === '$value') {
+        continue;
+      }
+      unknown.push(key);
+    }
+    return unknown;
+  }
+
+  validateTopicExpression(expression: any) {
+    var parsed = this.parseTopicExpression(expression);
+    if (!parsed.dialect) {
+      throw this.buildWsntFault('InvalidTopicExpressionFault');
+    }
+
+    if (!this.getSupportedTopicExpressionDialects().includes(parsed.dialect)) {
+      throw this.buildWsntFault('TopicExpressionDialectUnknownFault');
+    }
+
+    if (!parsed.value) {
+      throw this.buildWsntFault('InvalidTopicExpressionFault');
+    }
+  }
+
+  parseTopicExpression(expression: any) {
+    if (expression === null || expression === undefined) {
+      return { dialect: null, value: null };
+    }
+
+    var dialect = null;
+    var value: any = expression;
+    if (typeof expression === 'object') {
+      if (expression.attributes && expression.attributes.Dialect) {
+        dialect = expression.attributes.Dialect;
+      } else if (expression.Dialect) {
+        dialect = expression.Dialect;
+      }
+
+      if (expression.$value !== undefined) {
+        value = expression.$value;
+      } else if (expression.Value !== undefined) {
+        value = expression.Value;
+      }
+    }
+
+    if (typeof value === 'object') {
+      value = null;
+    }
+
+    if (typeof value === 'string') {
+      value = value.trim();
+    }
+
+    return {
+      dialect: dialect,
+      value: value
+    };
+  }
+
+  validateTopicExpressionDialects(args: any) {
+    if (!args || args.TopicExpressionDialect === undefined || args.TopicExpressionDialect === null) {
+      return;
+    }
+
+    var dialects = Array.isArray(args.TopicExpressionDialect)
+      ? args.TopicExpressionDialect
+      : [args.TopicExpressionDialect];
+    for (var i = 0; i < dialects.length; i++) {
+      if (!this.getSupportedTopicExpressionDialects().includes(dialects[i])) {
+        throw this.buildWsntFault('TopicExpressionDialectUnknownFault');
+      }
+    }
+  }
+
+  getSupportedTopicExpressionDialects(): string[] {
+    return [
+      'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete',
+      'http://www.onvif.org/ver10/tev/topicExpression/ConcreteSet'
+    ];
+  }
+
+  buildWsntFault(faultName: string, detail?: any) {
+    return {
+      Fault: {
+        attributes: {
+          'xmlns:wsnt': 'http://docs.oasis-open.org/wsn/b-2'
+        },
+        Code: {
+          Value: 'soap:Sender',
+          Subcode: {
+            Value: 'wsnt:' + faultName
+          }
+        },
+        Reason: {
+          Text: {
+            attributes: {
+              'xml:lang': 'en'
+            },
+            $value: faultName
+          }
+        },
+        Detail: detail || {
+          ['wsnt:' + faultName]: {}
+        }
+      }
+    };
   }
 }
 
