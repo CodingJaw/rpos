@@ -50,7 +50,7 @@ class EventService extends SoapService {
       this.buildAdditionalService(
         server,
         '/onvif/event_service_pullpoint',
-        'PullPointSubscription',
+        ['PullPointSubscription', 'SubscriptionManager'],
         'event_service_pullpoint started'
       ),
       this.buildAdditionalService(
@@ -68,19 +68,22 @@ class EventService extends SoapService {
     );
   }
 
-  buildPortService(portName: string) {
+  buildPortService(portNames: string | string[]) {
+    var ports = Array.isArray(portNames) ? portNames : [portNames];
+    var eventPorts: Record<string, any> = {};
+    ports.forEach(portName => {
+      eventPorts[portName] = this.event_service.EventService[portName];
+    });
     return {
-      EventService: {
-        [portName]: this.event_service.EventService[portName]
-      }
+      EventService: eventPorts
     };
   }
 
-  buildAdditionalService(server: Server, path: string, portName: string, logLabel: string) {
+  buildAdditionalService(server: Server, path: string, portNames: string | string[], logLabel: string) {
     var service = new SoapService(this.config, server);
     service.serviceOptions = {
       path: path,
-      services: this.buildPortService(portName),
+      services: this.buildPortService(portNames),
       xml: fs.readFileSync('./wsdl/onvif/services/event_service.wsdl', 'utf8'),
       wsdlPath: 'wsdl/onvif/services/event_service.wsdl',
       onReady: () => utils.log.info(logLabel)
