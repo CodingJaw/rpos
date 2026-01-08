@@ -295,6 +295,9 @@ class EventService extends SoapService {
 
   buildTopicSet() {
     return {
+      attributes: {
+        'xmlns:tns1': 'http://www.onvif.org/ver10/topics'
+      },
       'tns1:Device': {
         'tns1:Trigger': {},
         'tns1:Output': {}
