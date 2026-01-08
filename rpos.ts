@@ -39,6 +39,8 @@ import MediaService = require("./services/media_service");
 import PTZService = require("./services/ptz_service");
 import ImagingService = require("./services/imaging_service");
 import DiscoveryService = require("./services/discovery_service");
+import EventService = require("./services/event_service");
+import Events = require("./lib/events");
 
 import { exit } from "process";
 
@@ -165,9 +167,12 @@ let ptz_service = new PTZService(config, httpserver, ptz_driver.process_ptz_comm
 let imaging_service = new ImagingService(config, httpserver, ptz_driver.process_ptz_command);
 let media_service = new MediaService(config, httpserver, camera, ptz_service, profilesArray); // note ptz_service dependency
 let discovery_service = new DiscoveryService(config);
+let event_service = new EventService(config, httpserver);
+let events = new Events(config, webserver, event_service);
 
 device_service.start();
 media_service.start();
 ptz_service.start();
 imaging_service.start();
 discovery_service.start();
+event_service.start();
