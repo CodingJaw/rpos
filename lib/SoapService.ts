@@ -253,7 +253,16 @@ class SoapService {
     serviceInstance._process = function(input: any, URL: string, callback: any) {
       var self = this;
       var pathname = url.parse(URL).pathname.replace(/\/$/, '');
-      var obj = this.wsdl.xmlToObject(input);
+      var obj: any = null;
+      try {
+        obj = this.wsdl.xmlToObject(input);
+      } catch (err) {
+        if (typeof originalProcess === 'function') {
+          return originalProcess.call(self, input, URL, callback);
+        }
+        throw err;
+      }
+
       var body = obj.Body || {};
       var headers = obj.Header;
       var includeTimestamp = obj.Header && obj.Header.Security && obj.Header.Security.Timestamp;
