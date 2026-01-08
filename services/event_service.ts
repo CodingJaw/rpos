@@ -286,7 +286,6 @@ class EventService extends SoapService {
         'http://docs.oasis-open.org/wsn/t-1/TopicExpression/Concrete',
         'http://www.onvif.org/ver10/tev/topicExpression/ConcreteSet'
       ],
-      MessageContentFilterDialect: [''],
       MessageContentSchemaLocation: [
         'http://www.onvif.org/ver10/schema/onvif.xsd'
       ]
