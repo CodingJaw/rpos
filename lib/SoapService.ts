@@ -68,6 +68,7 @@ class SoapService {
       onReady();
     };
     this.serviceInstance = soap.listen(this.webserver, this.serviceOptions);
+    this.installProcessFallback();
 
     this.serviceInstance.on("request", (request: any, methodName: string) => {
       utils.log.debug('%s received request %s', (<TypeConstructor>this.constructor).name, methodName);
@@ -223,6 +224,27 @@ class SoapService {
       if (this.config.logSoapCalls)
         utils.log.debug('%s - Calltype : %s, Data : %s', (<TypeConstructor>this.constructor).name, type, data);
     };
+  }
+
+  installProcessFallback() {
+    if (!this.serviceInstance || this.serviceInstance._rposProcessPatched) {
+      return;
+    }
+
+    const originalProcess = this.serviceInstance._process.bind(this.serviceInstance);
+    this.serviceInstance._process = (input: any, url: string, callback: (result: string) => void) => {
+      try {
+        return originalProcess(input, url, callback);
+      } catch (err) {
+        const message = err && err.message ? String(err.message) : '';
+        if (err instanceof TypeError && message.indexOf('methodName') >= 0) {
+          utils.log.info('SOAP request did not match a known operation; returning empty response.');
+          return callback(this.serviceInstance._envelope('', false));
+        }
+        throw err;
+      }
+    };
+    this.serviceInstance._rposProcessPatched = true;
   }
 
   onStarted(callback: () => {}) {
