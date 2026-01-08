@@ -1,6 +1,7 @@
 ﻿///<reference path="../rpos.d.ts"/>
 
 import fs = require("fs");
+import url = require('url');
 import { Utils }  from './utils';
 import { Server } from 'http';
 var soap = <any>require('soap');
@@ -68,6 +69,7 @@ class SoapService {
       onReady();
     };
     this.serviceInstance = soap.listen(this.webserver, this.serviceOptions);
+    this.patchSoapServerDispatch(this.serviceInstance);
 
     this.serviceInstance.on("request", (request: any, methodName: string) => {
       utils.log.debug('%s received request %s', (<TypeConstructor>this.constructor).name, methodName);
@@ -238,6 +240,131 @@ class SoapService {
       callback();
     this.startedCallbacks = [];
     this.started();
+  }
+
+  patchSoapServerDispatch(serviceInstance: any) {
+    if (!serviceInstance || serviceInstance._rposPatched) {
+      return;
+    }
+
+    serviceInstance._rposPatched = true;
+    var originalProcess = serviceInstance._process;
+
+    serviceInstance._process = function(input: any, URL: string, callback: any) {
+      var self = this;
+      var pathname = url.parse(URL).pathname.replace(/\/$/, '');
+      var obj = this.wsdl.xmlToObject(input);
+      var body = obj.Body || {};
+      var headers = obj.Header;
+      var includeTimestamp = obj.Header && obj.Header.Security && obj.Header.Security.Timestamp;
+
+      if (typeof self.authenticate === 'function') {
+        if (!obj.Header || !obj.Header.Security) {
+          throw new Error('No security header');
+        }
+        if (!self.authenticate(obj.Header.Security)) {
+          throw new Error('Invalid username or password');
+        }
+      }
+
+      if (typeof self.log === 'function') {
+        self.log("info", "Attempting to bind to " + pathname);
+      }
+
+      var messageElemName = Object.keys(body)[0];
+      if (messageElemName === 'attributes') {
+        messageElemName = Object.keys(body)[1];
+      }
+
+      var bindingInfo = self._selectBindingForMessage(pathname, messageElemName);
+      if (!bindingInfo) {
+        throw new Error('Failed to bind to WSDL');
+      }
+
+      try {
+        if (bindingInfo.binding.style === 'rpc') {
+          var rpcMethodName = Object.keys(body)[0];
+
+          self.emit('request', obj, rpcMethodName);
+          if (headers)
+            self.emit('headers', headers, rpcMethodName);
+
+          self._executeMethod({
+            serviceName: bindingInfo.serviceName,
+            portName: bindingInfo.portName,
+            methodName: rpcMethodName,
+            outputName: rpcMethodName + 'Response',
+            args: body[rpcMethodName],
+            headers: headers,
+            style: 'rpc'
+          }, callback);
+        } else {
+          var documentPair = bindingInfo.binding.topElements[messageElemName];
+          if (!documentPair) {
+            return callback(self._envelope('', includeTimestamp));
+          }
+
+          self.emit('request', obj, documentPair.methodName);
+          if (headers)
+            self.emit('headers', headers, documentPair.methodName);
+
+          self._executeMethod({
+            serviceName: bindingInfo.serviceName,
+            portName: bindingInfo.portName,
+            methodName: documentPair.methodName,
+            outputName: documentPair.outputName,
+            args: body[messageElemName],
+            headers: headers,
+            style: 'document'
+          }, callback, includeTimestamp);
+        }
+      }
+      catch (err) {
+        if (err && err.Fault !== undefined) {
+          var fault = self.wsdl.objectToDocumentXML("Fault", err.Fault, "soap");
+          callback(self._envelope(fault, includeTimestamp));
+        } else if (typeof originalProcess === 'function') {
+          return originalProcess.call(self, input, URL, callback);
+        } else {
+          throw err;
+        }
+      }
+    };
+
+    serviceInstance._selectBindingForMessage = function(pathname: string, messageElemName: string) {
+      var services = this.wsdl.definitions.services;
+      var fallback = null;
+      var name;
+
+      for (name in services) {
+        var serviceName = name;
+        var service = services[serviceName];
+        var ports = service.ports;
+        for (name in ports) {
+          var portName = name;
+          var port = ports[portName];
+          var portPathname = url.parse(port.location).pathname.replace(/\/$/, '');
+
+          if (typeof this.log === 'function') {
+            this.log("info", "Trying " + portName + " from path " + portPathname);
+          }
+
+          if (portPathname !== pathname) {
+            continue;
+          }
+
+          if (!fallback) {
+            fallback = { binding: port.binding, serviceName: serviceName, portName: portName };
+          }
+
+          if (messageElemName && port.binding.topElements[messageElemName]) {
+            return { binding: port.binding, serviceName: serviceName, portName: portName };
+          }
+        }
+      }
+
+      return fallback;
+    };
   }
 }
 export = SoapService;
