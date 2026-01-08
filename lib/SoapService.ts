@@ -233,15 +233,19 @@ class SoapService {
 
     const originalProcess = this.serviceInstance._process.bind(this.serviceInstance);
     this.serviceInstance._process = (input: any, url: any, callback?: (result: string) => void) => {
-      let processUrl = url;
-      let processCallback = callback;
+      let processUrl: string = typeof url === 'string' ? url : '';
+      let processCallback: ((result: string) => void) | undefined =
+        typeof callback === 'function' ? callback : undefined;
 
-      if (typeof processCallback !== 'function' && typeof processUrl === 'function') {
-        processCallback = processUrl;
-        processUrl = '';
+      if (typeof url === 'function') {
+        if (!processCallback) {
+          processCallback = url;
+        } else {
+          processUrl = '';
+        }
       }
 
-      if (typeof processCallback !== 'function') {
+      if (!processCallback) {
         utils.log.info('SOAP _process invoked without a callback; response will be discarded.');
         processCallback = () => { };
       }
