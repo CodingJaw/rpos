@@ -232,14 +232,26 @@ class SoapService {
     }
 
     const originalProcess = this.serviceInstance._process.bind(this.serviceInstance);
-    this.serviceInstance._process = (input: any, url: string, callback: (result: string) => void) => {
+    this.serviceInstance._process = (input: any, url: any, callback?: (result: string) => void) => {
+      let processUrl = url;
+      let processCallback = callback;
+
+      if (typeof processCallback !== 'function' && typeof processUrl === 'function') {
+        processCallback = processUrl;
+        processUrl = '';
+      }
+
+      if (typeof processCallback !== 'function') {
+        utils.log.info('SOAP _process invoked without a callback; response will be discarded.');
+        processCallback = () => { };
+      }
       try {
-        return originalProcess(input, url, callback);
+        return originalProcess(input, processUrl, processCallback);
       } catch (err) {
         const message = err && err.message ? String(err.message) : '';
         if (err instanceof TypeError && message.indexOf('methodName') >= 0) {
           utils.log.info('SOAP request did not match a known operation; returning empty response.');
-          return callback(this.serviceInstance._envelope('', false));
+          return processCallback(this.serviceInstance._envelope('', false));
         }
         throw err;
       }
